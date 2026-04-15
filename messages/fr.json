@@ -1,0 +1,18 @@
+{
+  "nav": {
+    "map": "Voir la carte",
+    "back": "Retour à la carte"
+  },
+  "landing": {
+    "cta": "Voir le voyage"
+  },
+  "map": {
+    "distance": "Distance",
+    "date": "Date",
+    "journal": "Journal",
+    "viewTrip": "Voir l'étape"
+  },
+  "trip": {
+    "backToMap": "← Retour à la carte"
+  }
+}
