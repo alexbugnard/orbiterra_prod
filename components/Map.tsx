@@ -35,12 +35,15 @@ export function Map({ trips, waypoints, locale }: MapProps) {
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
+    let cancelled = false
 
     async function initMap() {
       const L = (await import('leaflet')).default
       await import('leaflet/dist/leaflet.css')
 
-      const map = L.map(containerRef.current!).setView([46.2276, 2.2137], 6)
+      if (cancelled || !containerRef.current) return
+
+      const map = L.map(containerRef.current).setView([46.2276, 2.2137], 6)
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
@@ -99,6 +102,7 @@ export function Map({ trips, waypoints, locale }: MapProps) {
     initMap()
 
     return () => {
+      cancelled = true
       mapRef.current?.remove()
       mapRef.current = null
     }
