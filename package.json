@@ -11,7 +11,8 @@
     "test:watch": "jest --watch",
     "gen:password": "node -e \"const b=require('bcryptjs'); const p=process.argv[1]; if(!p){console.error('Usage: npm run gen:password -- yourpassword');process.exit(1);} b.hash(p,10).then(h=>console.log('\\nADMIN_PASSWORD_HASH='+h+'\\n'))\"",
     "sync:strava": "node -e \"fetch('http://localhost:3000/api/cron/strava',{headers:{Authorization:'Bearer '+process.env.CRON_SECRET}}).then(r=>r.json()).then(console.log).catch(console.error)\"",
-    "sync:flickr": "node -e \"fetch('http://localhost:3000/api/cron/flickr',{headers:{Authorization:'Bearer '+process.env.CRON_SECRET}}).then(r=>r.json()).then(console.log).catch(console.error)\""
+    "sync:flickr": "node -e \"fetch('http://localhost:3000/api/cron/flickr',{headers:{Authorization:'Bearer '+process.env.CRON_SECRET}}).then(r=>r.json()).then(console.log).catch(console.error)\"",
+    "seed": "node scripts/seed.mjs"
   },
   "dependencies": {
     "@mapbox/polyline": "^1.2.1",
