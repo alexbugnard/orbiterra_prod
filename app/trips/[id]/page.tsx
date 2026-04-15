@@ -1,13 +1,8 @@
 import { createSupabaseClient } from '@/lib/supabase'
 import { getLocale, getTranslations } from 'next-intl/server'
-import dynamic from 'next/dynamic'
+import { MapClient } from '@/components/MapClient'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-
-const Map = dynamic(() => import('@/components/Map').then((m) => m.Map), {
-  ssr: false,
-  loading: () => <div className="w-full h-full flex items-center justify-center text-gray-400">Loading map...</div>,
-})
 
 export default async function TripPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -54,7 +49,7 @@ export default async function TripPage({ params }: { params: Promise<{ id: strin
         {journal && <p className="mt-2 text-gray-700">{journal}</p>}
       </div>
       <div className="flex-1">
-        <Map trips={[formattedTrip]} waypoints={waypoints ?? []} locale={locale} />
+        <MapClient trips={[formattedTrip]} waypoints={waypoints ?? []} locale={locale} />
       </div>
     </div>
   )

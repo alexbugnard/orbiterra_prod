@@ -1,11 +1,6 @@
 import { createSupabaseClient } from '@/lib/supabase'
 import { getLocale } from 'next-intl/server'
-import dynamic from 'next/dynamic'
-
-const Map = dynamic(() => import('@/components/Map').then((m) => m.Map), {
-  ssr: false,
-  loading: () => <div className="w-full h-full flex items-center justify-center text-gray-400">Loading map...</div>,
-})
+import { MapClient } from '@/components/MapClient'
 
 async function getMapData() {
   const supabase = createSupabaseClient()
@@ -42,7 +37,7 @@ export default async function MapPage() {
 
   return (
     <div className="h-[calc(100vh-57px)]">
-      <Map trips={trips} waypoints={waypoints} locale={locale} />
+      <MapClient trips={trips} waypoints={waypoints} locale={locale} />
     </div>
   )
 }
