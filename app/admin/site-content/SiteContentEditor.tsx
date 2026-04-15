@@ -9,22 +9,30 @@ export function SiteContentEditor({ content }: { content: Record<string, string>
   const [heroUrl, setHeroUrl] = useState(content.hero_image_url ?? '')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [error, setError] = useState('')
 
   async function save() {
     setSaving(true)
-    await fetch('/api/admin/site-content', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title,
-        description_fr: descFr,
-        description_en: descEn,
-        hero_image_url: heroUrl,
-      }),
-    })
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    setError('')
+    try {
+      const res = await fetch('/api/admin/site-content', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          description_fr: descFr,
+          description_en: descEn,
+          hero_image_url: heroUrl,
+        }),
+      })
+      if (!res.ok) throw new Error('Save failed')
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch {
+      setError('Failed to save. Please try again.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -71,6 +79,7 @@ export function SiteContentEditor({ content }: { content: Record<string, string>
       >
         {saved ? 'Saved ✓' : saving ? 'Saving...' : 'Save changes'}
       </button>
+      {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
     </div>
   )
 }

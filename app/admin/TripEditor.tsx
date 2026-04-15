@@ -19,17 +19,25 @@ export function TripEditor({ trip }: { trip: Trip }) {
   const [journalEn, setJournalEn] = useState(trip.journal_en ?? '')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [error, setError] = useState('')
 
   async function save() {
     setSaving(true)
-    await fetch(`/api/admin/trips/${trip.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, visible, journal_fr: journalFr, journal_en: journalEn }),
-    })
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    setError('')
+    try {
+      const res = await fetch(`/api/admin/trips/${trip.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, visible, journal_fr: journalFr, journal_en: journalEn }),
+      })
+      if (!res.ok) throw new Error('Save failed')
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch {
+      setError('Failed to save. Please try again.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const distanceKm = (trip.distance_m / 1000).toFixed(1)
@@ -84,6 +92,7 @@ export function TripEditor({ trip }: { trip: Trip }) {
       >
         {saved ? 'Saved ✓' : saving ? 'Saving...' : 'Save'}
       </button>
+      {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
     </div>
   )
 }
