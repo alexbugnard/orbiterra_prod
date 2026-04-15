@@ -66,20 +66,18 @@ export async function fetchFlickrPhotos(userId: string, apiKey: string): Promise
   const results: FlickrPhoto[] = []
 
   for (const raw of rawPhotos) {
-    // Fetch location for each photo
-    const geoParams = new URLSearchParams({
-      method: 'flickr.photos.geo.getLocation',
-      api_key: apiKey,
-      photo_id: raw.id,
-      format: 'json',
-      nojsoncallback: '1',
-    })
+    // Use geo data from the list response (already requested via extras=geo)
+    // Only fall back to getLocation API if coords are missing/zero
+    let location: { latitude: string; longitude: string } | null = null
 
-    const geoRes = await fetch(`${FLICKR_API}?${geoParams}`)
-    if (!geoRes.ok) continue
+    const lat = parseFloat(raw.latitude ?? '0')
+    const lng = parseFloat(raw.longitude ?? '0')
 
-    const geoData = await geoRes.json()
-    const location = geoData.photo?.location ?? null
+    if (lat !== 0 || lng !== 0) {
+      location = { latitude: String(raw.latitude), longitude: String(raw.longitude) }
+    }
+    // Skip photos without GPS entirely (no fallback API call needed)
+    if (!location) continue
 
     const parsed = parseFlickrPhoto(raw, location)
     if (parsed) results.push(parsed)
