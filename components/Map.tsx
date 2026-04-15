@@ -59,9 +59,9 @@ export function Map({ trips, waypoints, locale }: MapProps) {
         const latLngs = trip.coordinates.map(([lng, lat]) => [lat, lng] as [number, number])
 
         const polyline = L.polyline(latLngs, {
-          color: '#e63946',
-          weight: 3,
-          opacity: 0.8,
+          color: '#ff3d00',
+          weight: 6,
+          opacity: 1,
         }).addTo(map)
 
         const journal = locale === 'fr' ? trip.journal_fr : trip.journal_en

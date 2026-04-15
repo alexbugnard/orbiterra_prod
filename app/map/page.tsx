@@ -7,7 +7,7 @@ async function getMapData() {
 
   const { data: trips } = await supabase
     .from('trips')
-    .select('id, name, start_date, distance_m, path, journal_fr, journal_en')
+    .select('id, name, start_date, distance_m, path::text, journal_fr, journal_en')
     .eq('visible', true)
     .order('start_date', { ascending: true })
 
@@ -22,7 +22,7 @@ async function getMapData() {
     distance_m: t.distance_m,
     journal_fr: t.journal_fr,
     journal_en: t.journal_en,
-    coordinates: t.path?.coordinates ?? [],
+    coordinates: t.path ? JSON.parse(t.path).coordinates ?? [] : [],
   }))
 
   return {

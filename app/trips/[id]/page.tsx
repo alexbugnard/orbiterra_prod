@@ -12,7 +12,7 @@ export default async function TripPage({ params }: { params: Promise<{ id: strin
 
   const { data: trip } = await supabase
     .from('trips')
-    .select('*')
+    .select('id, name, start_date, end_date, distance_m, path::text, visible, journal_fr, journal_en')
     .eq('id', id)
     .eq('visible', true)
     .single()
@@ -33,7 +33,7 @@ export default async function TripPage({ params }: { params: Promise<{ id: strin
     distance_m: trip.distance_m,
     journal_fr: trip.journal_fr,
     journal_en: trip.journal_en,
-    coordinates: trip.path?.coordinates ?? [],
+    coordinates: trip.path ? JSON.parse(trip.path).coordinates ?? [] : [],
   }
 
   return (
