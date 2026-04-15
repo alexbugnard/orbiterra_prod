@@ -9,7 +9,8 @@ const Map = dynamic(() => import('@/components/Map').then((m) => m.Map), {
   loading: () => <div className="w-full h-full flex items-center justify-center text-gray-400">Loading map...</div>,
 })
 
-export default async function TripPage({ params }: { params: { id: string } }) {
+export default async function TripPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const supabase = createSupabaseClient()
   const locale = await getLocale()
   const t = await getTranslations('trip')
@@ -17,7 +18,7 @@ export default async function TripPage({ params }: { params: { id: string } }) {
   const { data: trip } = await supabase
     .from('trips')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('visible', true)
     .single()
 
@@ -26,7 +27,7 @@ export default async function TripPage({ params }: { params: { id: string } }) {
   const { data: waypoints } = await supabase
     .from('waypoints')
     .select('id, lat, lng, url_large, title')
-    .eq('trip_id', params.id)
+    .eq('trip_id', id)
 
   const journal = locale === 'fr' ? trip.journal_fr : trip.journal_en
   const distanceKm = (trip.distance_m / 1000).toFixed(1)
