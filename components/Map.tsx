@@ -45,6 +45,21 @@ interface ExternalHover {
   onDistance: (d: number | null) => void
 }
 
+interface Stats {
+  rides: number
+  totalKm: number
+  photos: number
+  progress: { pct: number; kmLeft: number; totalKm: number } | null
+  labels: {
+    rides: string
+    distance: string
+    km: string
+    photos: string
+    americasCrossing: string
+    left: string
+  }
+}
+
 interface MapProps {
   trips: Trip[]
   waypoints: Waypoint[]
@@ -52,6 +67,7 @@ interface MapProps {
   videos: Video[]
   locale: string
   externalHover?: ExternalHover
+  stats?: Stats | null
 }
 
 function toDateStr(iso: string) {
@@ -145,7 +161,7 @@ function closestDistOnPath(
 
 // ──────────────────────────────────────────────────────────────────────────────
 
-export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalHover }: MapProps) {
+export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalHover, stats }: MapProps) {
   const t = useTranslations('map')
   const isMobile = useIsMobile()
   const mapRef = useRef<LeafletMap | null>(null)
@@ -614,6 +630,48 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
           title={selectedPhoto.title ?? ''}
           onClose={() => setSelectedPhoto(null)}
         />
+      )}
+
+      {/* Stats overlay — hidden on mobile when a trip panel is open */}
+      {stats && !(isMobile && selectedTripIndex !== null) && (
+        <div
+          className="absolute bottom-8 left-2 right-2 md:left-4 md:right-auto z-[1000] rounded-xl px-4 md:px-5 py-3 flex items-center gap-4 md:gap-6 overflow-x-auto"
+          style={{ background: 'rgba(15,23,42,0.85)', backdropFilter: 'blur(8px)', border: '1px solid rgba(51,65,85,0.8)', scrollbarWidth: 'none' }}
+        >
+          <div>
+            <div className="text-xs text-slate-500 uppercase tracking-wider">{stats.labels.rides}</div>
+            <div className="text-lg font-bold text-white">{stats.rides}</div>
+          </div>
+          <div className="w-px h-8 bg-slate-700" />
+          <div>
+            <div className="text-xs text-slate-500 uppercase tracking-wider">{stats.labels.distance}</div>
+            <div className="text-lg font-bold text-white">{stats.totalKm.toLocaleString()} {stats.labels.km}</div>
+          </div>
+          <div className="w-px h-8 bg-slate-700" />
+          <div>
+            <div className="text-xs text-slate-500 uppercase tracking-wider">{stats.labels.photos}</div>
+            <div className="text-lg font-bold text-white">{stats.photos}</div>
+          </div>
+          {stats.progress && (
+            <>
+              <div className="w-px h-8 bg-slate-700" />
+              <div>
+                <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">{stats.labels.americasCrossing}</div>
+                <div className="flex items-center gap-3">
+                  <div className="w-28 h-2 bg-slate-700 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full" style={{ width: `${stats.progress.pct}%`, background: '#22d3ee' }} />
+                  </div>
+                  <div className="text-sm font-bold text-cyan-400">{stats.progress.pct}%</div>
+                </div>
+              </div>
+              <div className="w-px h-8 bg-slate-700" />
+              <div>
+                <div className="text-xs text-slate-500 uppercase tracking-wider">{stats.labels.left}</div>
+                <div className="text-lg font-bold text-white">{stats.progress.kmLeft.toLocaleString()} {stats.labels.km}</div>
+              </div>
+            </>
+          )}
+        </div>
       )}
     </>
   )

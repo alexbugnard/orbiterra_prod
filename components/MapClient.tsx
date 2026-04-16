@@ -55,6 +55,21 @@ interface ExternalHover {
   onDistance: (d: number | null) => void
 }
 
+interface Stats {
+  rides: number
+  totalKm: number
+  photos: number
+  progress: { pct: number; kmLeft: number; totalKm: number } | null
+  labels: {
+    rides: string
+    distance: string
+    km: string
+    photos: string
+    americasCrossing: string
+    left: string
+  }
+}
+
 interface MapClientProps {
   trips: Trip[]
   waypoints: Waypoint[]
@@ -62,8 +77,9 @@ interface MapClientProps {
   videos: Video[]
   locale: string
   externalHover?: ExternalHover
+  stats?: Stats | null
 }
 
-export function MapClient({ trips, waypoints, plannedRoutes, videos, locale, externalHover }: MapClientProps) {
-  return <Map trips={trips} waypoints={waypoints} plannedRoutes={plannedRoutes} videos={videos} locale={locale} externalHover={externalHover} />
+export function MapClient({ trips, waypoints, plannedRoutes, videos, locale, externalHover, stats }: MapClientProps) {
+  return <Map trips={trips} waypoints={waypoints} plannedRoutes={plannedRoutes} videos={videos} locale={locale} externalHover={externalHover} stats={stats} />
 }

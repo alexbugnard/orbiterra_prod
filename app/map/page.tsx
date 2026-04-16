@@ -127,56 +127,25 @@ export default async function MapPage() {
     ? computeAmericasProgress(trips, mainPlannedRoute.coordinates)
     : null
 
+  const stats = trips.length > 0 ? {
+    rides: trips.length,
+    totalKm,
+    photos: waypoints.length,
+    progress,
+    labels: {
+      rides: t('rides'),
+      distance: t('distance'),
+      km: t('km'),
+      photos: t('photos'),
+      americasCrossing: t('americasCrossing'),
+      left: t('left'),
+    },
+  } : null
+
   return (
     <div className="relative h-[calc(100vh-57px)]">
       <SyncTrigger />
-      <MapClient trips={trips} waypoints={waypoints} plannedRoutes={plannedRoutes} videos={videos} locale={locale} />
-
-      {/* Stats overlay */}
-      {trips.length > 0 && (
-        <div
-          className="absolute bottom-8 left-2 right-2 md:left-4 md:right-auto z-[1000] rounded-xl px-4 md:px-5 py-3 flex items-center gap-4 md:gap-6 overflow-x-auto"
-          style={{ background: 'rgba(15,23,42,0.85)', backdropFilter: 'blur(8px)', border: '1px solid rgba(51,65,85,0.8)', scrollbarWidth: 'none' }}
-        >
-          <div>
-            <div className="text-xs text-slate-500 uppercase tracking-wider">{t('rides')}</div>
-            <div className="text-lg font-bold text-white">{trips.length}</div>
-          </div>
-          <div className="w-px h-8 bg-slate-700" />
-          <div>
-            <div className="text-xs text-slate-500 uppercase tracking-wider">{t('distance')}</div>
-            <div className="text-lg font-bold text-white">{totalKm.toLocaleString()} {t('km')}</div>
-          </div>
-          <div className="w-px h-8 bg-slate-700" />
-          <div>
-            <div className="text-xs text-slate-500 uppercase tracking-wider">{t('photos')}</div>
-            <div className="text-lg font-bold text-white">{waypoints.length}</div>
-          </div>
-
-          {progress && (
-            <>
-              <div className="w-px h-8 bg-slate-700" />
-              <div>
-                <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">{t('americasCrossing')}</div>
-                <div className="flex items-center gap-3">
-                  <div className="w-28 h-2 bg-slate-700 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full"
-                      style={{ width: `${progress.pct}%`, background: '#22d3ee' }}
-                    />
-                  </div>
-                  <div className="text-sm font-bold text-cyan-400">{progress.pct}%</div>
-                </div>
-              </div>
-              <div className="w-px h-8 bg-slate-700" />
-              <div>
-                <div className="text-xs text-slate-500 uppercase tracking-wider">{t('left')}</div>
-                <div className="text-lg font-bold text-white">{progress.kmLeft.toLocaleString()} {t('km')}</div>
-              </div>
-            </>
-          )}
-        </div>
-      )}
+      <MapClient trips={trips} waypoints={waypoints} plannedRoutes={plannedRoutes} videos={videos} locale={locale} stats={stats} />
     </div>
   )
 }
