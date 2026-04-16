@@ -9,6 +9,7 @@ export interface StravaTokens {
 export interface StravaActivity {
   id: number
   name: string
+  type: string
   start_date: string
   elapsed_time: number
   distance: number
@@ -54,6 +55,31 @@ export async function refreshStravaToken(refreshToken: string): Promise<StravaTo
   }
 
   return parseTokenResponse(await res.json())
+}
+
+export async function fetchStravaElevation(
+  accessToken: string,
+  activityId: number
+): Promise<[number, number][] | null> {
+  const res = await fetch(
+    `${STRAVA_BASE}/api/v3/activities/${activityId}/streams?keys=altitude,distance&key_by_type=true`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  )
+  if (!res.ok) return null
+
+  const data = await res.json()
+  const altitudes: number[] = data.altitude?.data ?? []
+  const distances: number[] = data.distance?.data ?? []
+
+  if (altitudes.length === 0) return null
+
+  // Sample down to ~200 points max to keep DB size reasonable
+  const step = Math.max(1, Math.floor(altitudes.length / 200))
+  const points: [number, number][] = []
+  for (let i = 0; i < altitudes.length; i += step) {
+    points.push([Math.round(distances[i] ?? 0), Math.round(altitudes[i])])
+  }
+  return points
 }
 
 export async function fetchStravaActivitiesSince(

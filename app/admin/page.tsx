@@ -16,20 +16,32 @@ export default async function AdminPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Admin — Trips</h1>
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Trips</h1>
+          <p className="text-sm text-slate-500 mt-0.5">{trips.length} rides in database</p>
+        </div>
         <div className="flex gap-3">
-          <Link href="/admin/site-content" className="text-sm text-blue-600 hover:underline">
-            Edit site content →
+          <Link
+            href="/admin/site-content"
+            className="text-sm text-slate-400 hover:text-white transition-colors px-4 py-2 rounded-lg border border-slate-700 hover:border-slate-600"
+          >
+            Site content
           </Link>
-          <Link href="/admin/connect-strava" className="text-sm text-orange-600 hover:underline">
-            Connect Strava →
+          <Link
+            href="/admin/connect-strava"
+            className="text-sm text-white bg-orange-500 hover:bg-orange-600 transition-colors px-4 py-2 rounded-lg font-medium"
+          >
+            Connect Strava
           </Link>
         </div>
       </div>
-      <div className="space-y-4">
+
+      <div className="space-y-3">
         {trips.length === 0 && (
-          <p className="text-gray-500">No trips yet. Connect Strava and run the sync.</p>
+          <div className="text-center py-12 text-slate-500 bg-slate-800/50 rounded-xl border border-slate-700 border-dashed">
+            No trips yet. Connect Strava and run the sync.
+          </div>
         )}
         {trips.map((trip: any) => (
           <TripEditor key={trip.id} trip={trip} />

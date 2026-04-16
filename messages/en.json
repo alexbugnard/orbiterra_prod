@@ -1,18 +1,40 @@
 {
   "nav": {
     "map": "View map",
-    "back": "Back to map"
+    "about": "About"
   },
   "landing": {
     "cta": "View the journey"
   },
   "map": {
+    "rides": "Rides",
     "distance": "Distance",
-    "date": "Date",
-    "journal": "Journal",
-    "viewTrip": "View leg"
+    "photos": "Photos",
+    "americasCrossing": "Americas crossing",
+    "left": "Left",
+    "rideCount": "Ride {index} / {total}",
+    "km": "km",
+    "noJournal": "No journal entry for this ride.",
+    "viewTrip": "View full ride",
+    "previous": "Previous",
+    "next": "Next",
+    "loading": "Loading map…",
+    "videosTitle": "Videos from that day"
   },
   "trip": {
     "backToMap": "← Back to map"
+  },
+  "about": {
+    "title": "About",
+    "close": "Close",
+    "goalTitle": "The goal",
+    "goalText": "Ride from Deadhorse (Alaska) to Ushuaia (Argentina) — roughly 30,000 km across two continents, from Arctic ice to Patagonian winds. A self-supported journey, shaped by roads and encounters along the way.",
+    "vincentTitle": "Who is Vincent?",
+    "vincentText": "Vincent is a passionate cyclist and born adventurer. After years of dreaming about the ultimate Americas crossing, he left everything behind, packed his bags onto his bike and hit the road. Always smiling, always curious — endlessly fascinated by the landscapes and cultures he rides through.",
+    "sponsorsTitle": "Sponsors & support",
+    "sponsorsText": "This journey is made possible thanks to the support of our partners. Want to support the adventure? Get in touch.",
+    "videosTitle": "Videos",
+    "videosEmpty": "No videos yet.",
+    "videoPlay": "Play"
   }
 }

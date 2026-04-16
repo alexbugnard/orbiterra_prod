@@ -17,17 +17,24 @@ export function LanguageSwitcher() {
   }
 
   return (
-    <div className="flex gap-2 text-sm">
+    <div className="flex items-center gap-1 text-sm bg-slate-800 rounded-lg p-1">
       <button
         onClick={() => switchLocale('fr')}
-        className={locale === 'fr' ? 'font-bold underline' : 'text-gray-500 hover:text-gray-800'}
+        className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+          locale === 'fr'
+            ? 'bg-slate-700 text-white'
+            : 'text-slate-400 hover:text-slate-200'
+        }`}
       >
         FR
       </button>
-      <span className="text-gray-300">|</span>
       <button
         onClick={() => switchLocale('en')}
-        className={locale === 'en' ? 'font-bold underline' : 'text-gray-500 hover:text-gray-800'}
+        className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+          locale === 'en'
+            ? 'bg-slate-700 text-white'
+            : 'text-slate-400 hover:text-slate-200'
+        }`}
       >
         EN
       </button>

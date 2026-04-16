@@ -20,6 +20,7 @@ export function TripEditor({ trip }: { trip: Trip }) {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
+  const [expanded, setExpanded] = useState(false)
 
   async function save() {
     setSaving(true)
@@ -43,56 +44,88 @@ export function TripEditor({ trip }: { trip: Trip }) {
   const distanceKm = (trip.distance_m / 1000).toFixed(1)
 
   return (
-    <div className="bg-white rounded-lg border p-4">
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="text-base font-semibold border-b border-transparent focus:border-gray-300 focus:outline-none"
-          />
-          <p className="text-xs text-gray-400">
-            {new Date(trip.start_date).toLocaleDateString('en')} · {distanceKm} km
-          </p>
+    <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+      {/* Summary row */}
+      <div className="flex items-center gap-4 px-4 py-3">
+        <div
+          className={`w-2 h-2 rounded-full flex-shrink-0 ${visible ? 'bg-green-400' : 'bg-slate-600'}`}
+          title={visible ? 'Visible' : 'Hidden'}
+        />
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium text-white truncate">{trip.name}</div>
+          <div className="text-xs text-slate-500">
+            {new Date(trip.start_date).toLocaleDateString('en', { year: 'numeric', month: 'short', day: 'numeric' })} · {distanceKm} km
+          </div>
         </div>
-        <label className="flex items-center gap-2 text-sm cursor-pointer">
-          <input
-            type="checkbox"
-            checked={visible}
-            onChange={(e) => setVisible(e.target.checked)}
-            className="rounded"
-          />
-          Visible
-        </label>
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="text-xs text-slate-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg border border-slate-700 hover:border-slate-500"
+        >
+          {expanded ? 'Collapse' : 'Edit'}
+        </button>
       </div>
-      <div className="grid grid-cols-2 gap-3 mb-3">
-        <div>
-          <label className="text-xs font-medium text-gray-500 block mb-1">Journal (FR)</label>
-          <textarea
-            value={journalFr}
-            onChange={(e) => setJournalFr(e.target.value)}
-            rows={3}
-            className="w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-gray-300"
-          />
+
+      {/* Edit panel */}
+      {expanded && (
+        <div className="border-t border-slate-700 px-4 py-4 space-y-4">
+          <div>
+            <label className="text-xs font-medium text-slate-400 block mb-1.5">Name</label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500 transition-colors"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-slate-400 block mb-1.5">Journal (FR)</label>
+              <textarea
+                value={journalFr}
+                onChange={(e) => setJournalFr(e.target.value)}
+                rows={3}
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500 transition-colors resize-none"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-slate-400 block mb-1.5">Journal (EN)</label>
+              <textarea
+                value={journalEn}
+                onChange={(e) => setJournalEn(e.target.value)}
+                rows={3}
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500 transition-colors resize-none"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={visible}
+                onChange={(e) => setVisible(e.target.checked)}
+                className="w-4 h-4 accent-orange-500"
+              />
+              Publicly visible
+            </label>
+
+            <div className="flex items-center gap-3">
+              {error && <p className="text-red-400 text-xs">{error}</p>}
+              <button
+                onClick={save}
+                disabled={saving}
+                className={`text-sm px-4 py-2 rounded-lg font-medium transition-all disabled:opacity-50 ${
+                  saved
+                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                    : 'bg-orange-500 hover:bg-orange-600 text-white'
+                }`}
+              >
+                {saved ? '✓ Saved' : saving ? 'Saving…' : 'Save changes'}
+              </button>
+            </div>
+          </div>
         </div>
-        <div>
-          <label className="text-xs font-medium text-gray-500 block mb-1">Journal (EN)</label>
-          <textarea
-            value={journalEn}
-            onChange={(e) => setJournalEn(e.target.value)}
-            rows={3}
-            className="w-full border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-gray-300"
-          />
-        </div>
-      </div>
-      <button
-        onClick={save}
-        disabled={saving}
-        className="text-sm bg-gray-900 text-white px-4 py-1.5 rounded hover:bg-gray-700 disabled:opacity-50"
-      >
-        {saved ? 'Saved ✓' : saving ? 'Saving...' : 'Save'}
-      </button>
-      {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+      )}
     </div>
   )
 }

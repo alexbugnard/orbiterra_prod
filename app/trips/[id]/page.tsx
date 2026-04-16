@@ -1,7 +1,6 @@
 import { createSupabaseClient } from '@/lib/supabase'
 import { getLocale, getTranslations } from 'next-intl/server'
-import { MapClient } from '@/components/MapClient'
-import Link from 'next/link'
+import { TripViewClient } from '@/components/TripViewClient'
 import { notFound } from 'next/navigation'
 
 export default async function TripPage({ params }: { params: Promise<{ id: string }> }) {
@@ -12,7 +11,7 @@ export default async function TripPage({ params }: { params: Promise<{ id: strin
 
   const { data: trip } = await supabase
     .from('trips')
-    .select('id, name, start_date, end_date, distance_m, path::text, visible, journal_fr, journal_en')
+    .select('id, name, start_date, end_date, distance_m, coordinates, visible, journal_fr, journal_en, elevation')
     .eq('id', id)
     .eq('visible', true)
     .single()
@@ -26,6 +25,10 @@ export default async function TripPage({ params }: { params: Promise<{ id: strin
 
   const journal = locale === 'fr' ? trip.journal_fr : trip.journal_en
   const distanceKm = (trip.distance_m / 1000).toFixed(1)
+  const date = new Date(trip.start_date).toLocaleDateString(locale, {
+    year: 'numeric', month: 'long', day: 'numeric'
+  })
+
   const formattedTrip = {
     id: trip.id,
     name: trip.name,
@@ -33,24 +36,21 @@ export default async function TripPage({ params }: { params: Promise<{ id: strin
     distance_m: trip.distance_m,
     journal_fr: trip.journal_fr,
     journal_en: trip.journal_en,
-    coordinates: trip.path ? JSON.parse(trip.path).coordinates ?? [] : [],
+    coordinates: trip.coordinates ?? [],
+    elevation: (trip.elevation ?? null) as [number, number][] | null,
+    start_lat: null,
+    start_lng: null,
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-57px)]">
-      <div className="px-6 py-4 border-b bg-white">
-        <Link href="/map" className="text-sm text-gray-500 hover:text-gray-800 mb-2 inline-block">
-          {t('backToMap')}
-        </Link>
-        <h1 className="text-xl font-bold">{trip.name}</h1>
-        <p className="text-sm text-gray-500">
-          {new Date(trip.start_date).toLocaleDateString(locale)} · {distanceKm} km
-        </p>
-        {journal && <p className="mt-2 text-gray-700">{journal}</p>}
-      </div>
-      <div className="flex-1">
-        <MapClient trips={[formattedTrip]} waypoints={waypoints ?? []} locale={locale} />
-      </div>
-    </div>
+    <TripViewClient
+      trip={formattedTrip}
+      waypoints={waypoints ?? []}
+      locale={locale}
+      backLabel={t('backToMap')}
+      distanceKm={distanceKm}
+      date={date}
+      journal={journal}
+    />
   )
 }
