@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { MapClient } from '@/components/MapClient'
 import { ElevationProfile } from '@/components/ElevationProfile'
+import { computeElevationGain } from '@/lib/strava'
 
 interface Waypoint {
   id: string
@@ -71,12 +72,12 @@ export function TripViewClient({
               <div className="text-xl font-bold text-orange-400">{distanceKm}</div>
               <div className="text-xs text-slate-500">km</div>
             </div>
-            {waypoints && waypoints.length > 0 && (
+            {trip.elevation && trip.elevation.length > 1 && (
               <>
                 <div className="w-px h-8 bg-slate-700" />
                 <div className="text-right">
-                  <div className="text-xl font-bold text-white">{waypoints.length}</div>
-                  <div className="text-xs text-slate-500">photos</div>
+                  <div className="text-xl font-bold text-white">↑ {computeElevationGain(trip.elevation).toLocaleString()}</div>
+                  <div className="text-xs text-slate-500">m gain</div>
                 </div>
               </>
             )}

@@ -58,13 +58,15 @@ interface ExternalHover {
 interface Stats {
   rides: number
   totalKm: number
-  photos: number
+  totalElevationGain: number
+  countries: number
   progress: { pct: number; kmLeft: number; totalKm: number } | null
   labels: {
     rides: string
     distance: string
     km: string
-    photos: string
+    elevation: string
+    countries: string
     americasCrossing: string
     left: string
   }

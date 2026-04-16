@@ -1,5 +1,28 @@
 const STRAVA_BASE = 'https://www.strava.com'
 
+export function computeElevationGain(elevation: [number, number][]): number {
+  let gain = 0
+  for (let i = 1; i < elevation.length; i++) {
+    const diff = elevation[i][1] - elevation[i - 1][1]
+    if (diff > 0) gain += diff
+  }
+  return Math.round(gain)
+}
+
+export async function reverseGeocodeCountry(lat: number, lng: number): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+      { headers: { 'User-Agent': 'BikeTrip/1.0' } }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.address?.country ?? null
+  } catch {
+    return null
+  }
+}
+
 export interface StravaTokens {
   access_token: string
   refresh_token: string

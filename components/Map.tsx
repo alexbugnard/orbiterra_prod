@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl'
 import { PhotoModal } from './PhotoModal'
 import { ElevationProfile } from './ElevationProfile'
 import { useIsMobile } from '@/lib/useIsMobile'
+import { computeElevationGain } from '@/lib/strava'
 
 interface Trip {
   id: string
@@ -16,6 +17,7 @@ interface Trip {
   journal_en: string | null
   coordinates: [number, number][]
   elevation: [number, number][] | null
+  country?: string | null
 }
 
 interface Waypoint {
@@ -48,13 +50,15 @@ interface ExternalHover {
 interface Stats {
   rides: number
   totalKm: number
-  photos: number
+  totalElevationGain: number
+  countries: number
   progress: { pct: number; kmLeft: number; totalKm: number } | null
   labels: {
     rides: string
     distance: string
     km: string
-    photos: string
+    elevation: string
+    countries: string
     americasCrossing: string
     left: string
   }
@@ -503,19 +507,20 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 gap-px bg-slate-700/30 border-b border-slate-700/50">
-              <div className="px-5 py-3 bg-slate-900/50">
-                <div className="text-xl font-bold text-white">{(selectedTrip.distance_m / 1000).toFixed(1)}</div>
+            <div className="grid grid-cols-3 gap-px bg-slate-700/30 border-b border-slate-700/50">
+              <div className="px-4 py-3 bg-slate-900/50">
+                <div className="text-lg font-bold text-white">{(selectedTrip.distance_m / 1000).toFixed(1)}</div>
                 <div className="text-xs text-slate-500 mt-0.5">{t('km')}</div>
               </div>
-              <div className="px-5 py-3 bg-slate-900/50">
-                <div className="text-xl font-bold text-white">
-                  {waypoints.filter(wp => {
-                    // approximate: check if waypoint is near this trip's time
-                    return true
-                  }).length}
+              <div className="px-4 py-3 bg-slate-900/50">
+                <div className="text-lg font-bold text-white">
+                  {selectedTrip.elevation ? `↑ ${computeElevationGain(selectedTrip.elevation).toLocaleString()}` : '—'}
                 </div>
-                <div className="text-xs text-slate-500 mt-0.5">{t('photos')}</div>
+                <div className="text-xs text-slate-500 mt-0.5">m gain</div>
+              </div>
+              <div className="px-4 py-3 bg-slate-900/50">
+                <div className="text-lg font-bold text-white">{selectedTrip.country ?? '—'}</div>
+                <div className="text-xs text-slate-500 mt-0.5 truncate">{t('country') || 'pays'}</div>
               </div>
             </div>
 
@@ -653,9 +658,18 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
           </div>
           <div className="w-px h-8 bg-slate-700" />
           <div>
-            <div className="text-xs text-slate-500 uppercase tracking-wider">{stats.labels.photos}</div>
-            <div className="text-lg font-bold text-white">{stats.photos}</div>
+            <div className="text-xs text-slate-500 uppercase tracking-wider">{stats.labels.elevation}</div>
+            <div className="text-lg font-bold text-white">↑ {stats.totalElevationGain.toLocaleString()} {stats.labels.km === 'km' ? 'm' : 'm'}</div>
           </div>
+          {stats.countries > 0 && (
+            <>
+              <div className="w-px h-8 bg-slate-700" />
+              <div>
+                <div className="text-xs text-slate-500 uppercase tracking-wider">{stats.labels.countries}</div>
+                <div className="text-lg font-bold text-white">{stats.countries}</div>
+              </div>
+            </>
+          )}
           {stats.progress && (
             <>
               <div className="w-px h-8 bg-slate-700" />

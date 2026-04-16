@@ -2,6 +2,7 @@ import { createSupabaseClient } from '@/lib/supabase'
 import { getLocale, getTranslations } from 'next-intl/server'
 import { MapClient } from '@/components/MapClient'
 import { SyncTrigger } from '@/components/SyncTrigger'
+import { computeElevationGain } from '@/lib/strava'
 
 // Americas longitude band — excludes Europe/Africa/Asia rides
 const AMERICAS_LNG_MIN = -170
@@ -33,7 +34,7 @@ async function getMapData() {
   const [{ data: trips }, { data: waypoints }, { data: plannedRoutes }, { data: videos }] = await Promise.all([
     supabase
       .from('trips')
-      .select('id, name, start_date, distance_m, coordinates, journal_fr, journal_en, start_lat, start_lng, elevation')
+      .select('id, name, start_date, distance_m, coordinates, journal_fr, journal_en, start_lat, start_lng, elevation, country')
       .eq('visible', true)
       .order('start_date', { ascending: true }),
     supabase
@@ -59,6 +60,7 @@ async function getMapData() {
     start_lat: t.start_lat as number | null,
     start_lng: t.start_lng as number | null,
     elevation: (t.elevation ?? null) as [number, number][] | null,
+    country: (t.country ?? null) as string | null,
   }))
 
   const formattedPlannedRoutes = (plannedRoutes ?? []).map((r: any) => ({
@@ -121,6 +123,9 @@ export default async function MapPage() {
   const t = await getTranslations('map')
 
   const totalKm = Math.round(trips.reduce((sum, t) => sum + (t.distance_m ?? 0), 0) / 1000)
+  const totalElevationGain = trips.reduce((sum, t) =>
+    sum + (t.elevation ? computeElevationGain(t.elevation) : 0), 0)
+  const countries = [...new Set(trips.map(t => t.country).filter(Boolean))]
 
   const mainPlannedRoute = plannedRoutes[0] ?? null
   const progress = mainPlannedRoute
@@ -130,13 +135,15 @@ export default async function MapPage() {
   const stats = trips.length > 0 ? {
     rides: trips.length,
     totalKm,
-    photos: waypoints.length,
+    totalElevationGain,
+    countries: countries.length,
     progress,
     labels: {
       rides: t('rides'),
       distance: t('distance'),
       km: t('km'),
-      photos: t('photos'),
+      elevation: t('elevation'),
+      countries: t('countries'),
       americasCrossing: t('americasCrossing'),
       left: t('left'),
     },
