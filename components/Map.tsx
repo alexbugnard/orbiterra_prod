@@ -378,10 +378,27 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
         iconAnchor: [16, 16],
       })
 
+      // Zoom threshold: show markers only when ~200km or less is visible (~zoom 9)
+      const PHOTO_ZOOM_THRESHOLD = 9
+      const waypointMarkers: any[] = []
+
       for (const wp of waypoints) {
-        const marker = L.marker([wp.lat, wp.lng], { icon: cameraIcon }).addTo(map)
+        const marker = L.marker([wp.lat, wp.lng], { icon: cameraIcon })
         marker.on('click', () => setSelectedPhoto(wp))
+        waypointMarkers.push(marker)
       }
+
+      function updateMarkerVisibility() {
+        const zoom = map.getZoom()
+        if (zoom >= PHOTO_ZOOM_THRESHOLD) {
+          waypointMarkers.forEach((m) => { if (!map.hasLayer(m)) m.addTo(map) })
+        } else {
+          waypointMarkers.forEach((m) => { if (map.hasLayer(m)) m.remove() })
+        }
+      }
+
+      map.on('zoomend', updateMarkerVisibility)
+      updateMarkerVisibility()
 
       const allLatLngs = trips.flatMap((t) =>
         t.coordinates.map(([lng, lat]) => [lat, lng] as [number, number])
