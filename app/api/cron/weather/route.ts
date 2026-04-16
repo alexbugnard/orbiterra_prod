@@ -24,11 +24,12 @@ export async function POST(request: Request) {
 
   const now = new Date().toISOString()
 
+  let failedCount = 0
   for (let i = 0; i < points.length; i++) {
     const forecast = forecasts[i]
     if (!forecast) continue
 
-    await supabase.from('weather_points').update({
+    const { error: updateError } = await supabase.from('weather_points').update({
       weather_code: forecast.weather_code,
       temp_min: forecast.temp_min,
       temp_max: forecast.temp_max,
@@ -36,7 +37,9 @@ export async function POST(request: Request) {
       wind_speed: forecast.wind_speed,
       fetched_at: now,
     }).eq('id', points[i].id)
+
+    if (updateError) failedCount++
   }
 
-  return NextResponse.json({ updated: points.length })
+  return NextResponse.json({ updated: points.length - failedCount, failed: failedCount })
 }

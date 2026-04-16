@@ -61,7 +61,7 @@ export class WeatherLayer {
       const icon = L.divIcon({
         html: buildMarkerHtml(point),
         className: '',
-        iconAnchor: [0, 0],
+        iconAnchor: [28, 60],
       })
 
       const marker = L.marker([point.lat, point.lng], { icon })
