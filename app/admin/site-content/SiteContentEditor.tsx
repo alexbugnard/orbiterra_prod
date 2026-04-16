@@ -36,50 +36,50 @@ export function SiteContentEditor({ content }: { content: Record<string, string>
   }
 
   return (
-    <div className="bg-white rounded-lg border p-6 space-y-4">
+    <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 space-y-4">
       <div>
-        <label className="text-sm font-medium block mb-1">Trip Title</label>
+        <label className="text-sm font-medium text-slate-300 block mb-1">Trip Title</label>
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-300"
+          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
         />
       </div>
       <div>
-        <label className="text-sm font-medium block mb-1">Description (FR)</label>
+        <label className="text-sm font-medium text-slate-300 block mb-1">Description (FR)</label>
         <textarea
           value={descFr}
           onChange={(e) => setDescFr(e.target.value)}
           rows={4}
-          className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-300"
+          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
         />
       </div>
       <div>
-        <label className="text-sm font-medium block mb-1">Description (EN)</label>
+        <label className="text-sm font-medium text-slate-300 block mb-1">Description (EN)</label>
         <textarea
           value={descEn}
           onChange={(e) => setDescEn(e.target.value)}
           rows={4}
-          className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-300"
+          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
         />
       </div>
       <div>
-        <label className="text-sm font-medium block mb-1">Hero Image URL</label>
+        <label className="text-sm font-medium text-slate-300 block mb-1">Hero Image URL</label>
         <input
           value={heroUrl}
           onChange={(e) => setHeroUrl(e.target.value)}
           placeholder="https://..."
-          className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gray-300"
+          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
         />
       </div>
       <button
         onClick={save}
         disabled={saving}
-        className="bg-gray-900 text-white px-6 py-2 rounded font-semibold hover:bg-gray-700 disabled:opacity-50"
+        className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg font-semibold disabled:opacity-50 transition-colors"
       >
         {saved ? 'Saved ✓' : saving ? 'Saving...' : 'Save changes'}
       </button>
-      {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+      {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
     </div>
   )
 }

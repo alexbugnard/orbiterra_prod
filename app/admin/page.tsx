@@ -1,5 +1,6 @@
 import { createSupabaseClient } from '@/lib/supabase'
 import { TripEditor } from './TripEditor'
+import { SyncButton } from './SyncButton'
 import Link from 'next/link'
 
 async function getTrips() {
@@ -28,6 +29,7 @@ export default async function AdminPage() {
           >
             Site content
           </Link>
+          <SyncButton />
           <Link
             href="/admin/connect-strava"
             className="text-sm text-white bg-orange-500 hover:bg-orange-600 transition-colors px-4 py-2 rounded-lg font-medium"
