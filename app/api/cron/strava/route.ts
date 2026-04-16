@@ -18,7 +18,7 @@ export function verifyCronSecret(headers: Headers): boolean {
   }
 }
 
-export async function runStravaSync(): Promise<{ upserted: number; since: string }> {
+export async function runStravaSync(): Promise<{ upserted: number; fetched: number; since: string }> {
   const supabase = createSupabaseClient()
 
   const { data: tokenRow, error: tokenError } = await supabase
@@ -50,11 +50,14 @@ export async function runStravaSync(): Promise<{ upserted: number; since: string
   const since = (!lastSynced || lastSynced < SYNC_EPOCH) ? SYNC_EPOCH : lastSynced
 
   const activities = await fetchStravaActivitiesSince(accessToken, since)
+  console.log(`[strava-sync] since=${since.toISOString()} fetched=${activities.length} activities`)
+  activities.forEach(a => console.log(`  → id=${a.id} type=${a.type} name="${a.name}"`))
 
   let upserted = 0
   for (const activity of activities) {
     // Skip non-ride activities
     if (activity.type && !['Ride', 'VirtualRide', 'EBikeRide', 'MountainBikeRide', 'GravelRide'].includes(activity.type)) {
+      console.log(`  [skip] ${activity.id} type=${activity.type}`)
       continue
     }
 
@@ -104,7 +107,7 @@ export async function runStravaSync(): Promise<{ upserted: number; since: string
     last_synced_at: new Date().toISOString(),
   }).eq('id', 1)
 
-  return { upserted, since: since.toISOString() }
+  return { upserted, fetched: activities.length, since: since.toISOString() }
 }
 
 // Called by Vercel Cron (requires secret)
