@@ -258,7 +258,11 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
     const trip = trips[index]
     if (trip.coordinates.length < 2) return
     const latLngs = trip.coordinates.map(([lng, lat]: [number, number]) => [lat, lng] as [number, number])
-    mapRef.current.fitBounds(L.latLngBounds(latLngs), { padding: [60, 60], maxZoom: 12 })
+    // On mobile the bottom sheet covers 65vh — add bottom padding so the route
+    // centres in the visible area above the sheet
+    const mobile = window.innerWidth < 768
+    const bottomPad = mobile ? Math.round(window.innerHeight * 0.65) + 20 : 60
+    mapRef.current.fitBounds(L.latLngBounds(latLngs), { paddingTopLeft: [60, 60], paddingBottomRight: [60, bottomPad], maxZoom: 12 })
 
     // Highlight selected, dim others
     polylinesRef.current.forEach((pl, i) => {
