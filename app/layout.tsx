@@ -3,7 +3,6 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { AboutButton } from '@/components/AboutButton'
-import { NavMapLink } from '@/components/NavMapLink'
 import Link from 'next/link'
 import { NextIntlClientProvider } from 'next-intl'
 import { getLocale, getMessages, getTranslations } from 'next-intl/server'
@@ -31,7 +30,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </Link>
             <nav className="flex items-center gap-3 md:gap-4">
               <AboutButton label={t('about')} />
-              <NavMapLink label={t('map')} />
               {/* Instagram */}
               <a
                 href="https://www.instagram.com/vincentmorisetti/"
