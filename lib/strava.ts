@@ -13,7 +13,7 @@ export async function reverseGeocodeCountry(lat: number, lng: number): Promise<s
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
-      { headers: { 'User-Agent': 'BikeTrip/1.0' } }
+      { headers: { 'User-Agent': 'OrbiTerra/1.0' } }
     )
     if (!res.ok) return null
     const data = await res.json()

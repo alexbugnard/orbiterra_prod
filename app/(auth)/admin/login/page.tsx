@@ -36,7 +36,7 @@ export default function LoginPage() {
             <span className="text-2xl">⬡</span>
           </div>
           <h1 className="text-xl font-bold text-white">Admin Access</h1>
-          <p className="text-sm text-slate-500 mt-1">BikeTrip management</p>
+          <p className="text-sm text-slate-500 mt-1">OrbiTerra management</p>
         </div>
 
         <form

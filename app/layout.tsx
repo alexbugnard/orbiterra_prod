@@ -10,8 +10,8 @@ import { getLocale, getMessages, getTranslations } from 'next-intl/server'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'BikeTrip',
-  description: 'Cycling journey tracker with interactive maps',
+  title: 'OrbiTerra',
+  description: 'Alaska → Ushuaia — suivez le voyage de Vincent en temps réel',
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -26,7 +26,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <header className="flex items-center justify-between px-4 md:px-6 py-3 border-b border-slate-800 bg-slate-900/95 backdrop-blur-sm sticky top-0 z-50">
             <Link href="/" className="flex items-center gap-2 font-bold text-white text-lg tracking-tight">
               <span className="text-orange-500">⬡</span>
-              <span>BikeTrip</span>
+              <span>Orbi<span className="text-orange-400">Terra</span></span>
             </Link>
             <nav className="flex items-center gap-3 md:gap-4">
               <AboutButton label={t('about')} />

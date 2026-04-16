@@ -52,12 +52,16 @@ export default async function LandingPage() {
         <div className="relative z-10 max-w-2xl">
           <div className="inline-flex items-center gap-2 bg-orange-500/10 border border-orange-500/20 text-orange-400 text-sm font-medium px-4 py-1.5 rounded-full mb-8">
             <span className="w-1.5 h-1.5 bg-orange-400 rounded-full animate-pulse" />
-            Live journey tracker
+            Alaska → Ushuaia
           </div>
 
-          <h1 className="text-5xl md:text-6xl font-extrabold text-white mb-6 leading-tight tracking-tight">
-            {content.title || 'My Cycling\nAdventures'}
+          <h1 className="text-5xl md:text-6xl font-extrabold text-white mb-4 leading-tight tracking-tight">
+            Orbi<span className="text-orange-400">Terra</span>
           </h1>
+
+          <p className="text-xl text-slate-300 font-medium mb-4">
+            {content.title || 'Le voyage de Vincent'}
+          </p>
 
           <p className="text-lg text-slate-400 max-w-xl mx-auto mb-10 leading-relaxed">
             {description || 'Follow my bike trips around the world, with photos and route details.'}
