@@ -1,5 +1,5 @@
 import { createSupabaseClient } from '@/lib/supabase'
-import { getLocale, getTranslations } from 'next-intl/server'
+import { getLocale } from 'next-intl/server'
 import { TripViewClient } from '@/components/TripViewClient'
 import { notFound } from 'next/navigation'
 
@@ -7,7 +7,6 @@ export default async function TripPage({ params }: { params: Promise<{ id: strin
   const { id } = await params
   const supabase = createSupabaseClient()
   const locale = await getLocale()
-  const t = await getTranslations('trip')
 
   const { data: trip } = await supabase
     .from('trips')
@@ -47,7 +46,6 @@ export default async function TripPage({ params }: { params: Promise<{ id: strin
       trip={formattedTrip}
       waypoints={waypoints ?? []}
       locale={locale}
-      backLabel={t('backToMap')}
       distanceKm={distanceKm}
       date={date}
       journal={journal}

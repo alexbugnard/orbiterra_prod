@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { MapClient } from '@/components/MapClient'
 import { ElevationProfile } from '@/components/ElevationProfile'
-import Link from 'next/link'
 
 interface Waypoint {
   id: string
@@ -30,7 +29,6 @@ interface TripViewClientProps {
   trip: Trip
   waypoints: Waypoint[]
   locale: string
-  backLabel: string
   distanceKm: string
   date: string
   journal: string | null
@@ -40,7 +38,6 @@ export function TripViewClient({
   trip,
   waypoints,
   locale,
-  backLabel,
   distanceKm,
   date,
   journal,
@@ -51,16 +48,6 @@ export function TripViewClient({
     <div className="flex flex-col h-[calc(100vh-57px)] bg-slate-900">
       {/* Header */}
       <div className="px-6 py-4 border-b border-slate-800" style={{ background: 'rgba(15,23,42,0.95)' }}>
-        <Link
-          href="/map"
-          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-300 transition-colors mb-3"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M19 12H5M12 19l-7-7 7-7"/>
-          </svg>
-          {backLabel}
-        </Link>
-
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-lg font-bold text-white leading-tight truncate">{trip.name}</h1>
