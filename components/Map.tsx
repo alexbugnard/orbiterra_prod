@@ -5,6 +5,7 @@ import type { Map as LeafletMap, Polyline } from 'leaflet'
 import { useTranslations } from 'next-intl'
 import { PhotoModal } from './PhotoModal'
 import { ElevationProfile } from './ElevationProfile'
+import { useIsMobile } from '@/lib/useIsMobile'
 
 interface Trip {
   id: string
@@ -146,6 +147,7 @@ function closestDistOnPath(
 
 export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalHover }: MapProps) {
   const t = useTranslations('map')
+  const isMobile = useIsMobile()
   const mapRef = useRef<LeafletMap | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const polylinesRef = useRef<Polyline[]>([])
@@ -426,18 +428,36 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
 
       {/* Trip detail panel — hidden on trip detail page (externalHover mode) */}
       {externalHover === undefined && <div
-        className="absolute top-4 right-4 bottom-4 z-[1000] w-80 flex flex-col rounded-2xl overflow-hidden transition-all duration-300"
+        className={isMobile
+          ? 'absolute left-0 right-0 bottom-0 z-[1000] flex flex-col rounded-t-2xl overflow-hidden transition-all duration-300'
+          : 'absolute top-4 right-4 bottom-4 z-[1000] w-80 flex flex-col rounded-2xl overflow-hidden transition-all duration-300'
+        }
         style={{
           background: 'rgba(15,23,42,0.95)',
           backdropFilter: 'blur(12px)',
           border: '1px solid rgba(51,65,85,0.8)',
           boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
-          transform: selectedTrip ? 'translateX(0)' : 'translateX(calc(100% + 24px))',
+          ...(isMobile
+            ? {
+                maxHeight: '65vh',
+                transform: selectedTrip ? 'translateY(0)' : 'translateY(100%)',
+              }
+            : {
+                transform: selectedTrip ? 'translateX(0)' : 'translateX(calc(100% + 24px))',
+              }
+          ),
           pointerEvents: selectedTrip ? 'all' : 'none',
         }}
       >
         {selectedTrip && selectedTripIndex !== null && (
           <>
+            {/* Mobile drag handle */}
+            {isMobile && (
+              <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+                <div className="w-10 h-1 rounded-full bg-slate-600" />
+              </div>
+            )}
+
             {/* Header */}
             <div className="px-5 pt-5 pb-4 border-b border-slate-700/50">
               <div className="flex items-start justify-between gap-3 mb-3">
@@ -479,8 +499,8 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
               </div>
             </div>
 
-            {/* Elevation profile */}
-            {selectedTrip.elevation && selectedTrip.elevation.length > 1 && (
+            {/* Elevation profile — desktop only (too cramped in mobile bottom sheet) */}
+            {!isMobile && selectedTrip.elevation && selectedTrip.elevation.length > 1 && (
               <div className="px-5 py-3 border-b border-slate-700/30">
                 <ElevationProfile
                   points={selectedTrip.elevation}

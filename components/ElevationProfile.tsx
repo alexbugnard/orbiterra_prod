@@ -73,16 +73,31 @@ export function ElevationProfile({ points, hoveredDistance, onHoverDistance }: E
     indicatorY = toY(nearest[1])
   }
 
+  function getDistFromClientX(clientX: number, rect: DOMRect): number {
+    const offsetX = clientX - rect.left
+    const dist = ((offsetX - PAD.left) / innerW) * maxDist
+    return Math.max(0, Math.min(maxDist, dist))
+  }
+
   function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
     if (!onHoverDistance) return
     const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect()
-    const offsetX = e.clientX - rect.left
-    const dist = ((offsetX - PAD.left) / innerW) * maxDist
-    const clamped = Math.max(0, Math.min(maxDist, dist))
-    onHoverDistance(clamped)
+    onHoverDistance(getDistFromClientX(e.clientX, rect))
   }
 
   function handleMouseLeave() {
+    onHoverDistance?.(null)
+  }
+
+  function handleTouchMove(e: React.TouchEvent<SVGSVGElement>) {
+    if (!onHoverDistance) return
+    const touch = e.touches[0]
+    if (!touch) return
+    const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect()
+    onHoverDistance(getDistFromClientX(touch.clientX, rect))
+  }
+
+  function handleTouchEnd() {
     onHoverDistance?.(null)
   }
 
@@ -96,9 +111,11 @@ export function ElevationProfile({ points, hoveredDistance, onHoverDistance }: E
       <svg
         width={width}
         height={H}
-        style={{ display: 'block', cursor: onHoverDistance ? 'crosshair' : undefined }}
+        style={{ display: 'block', cursor: onHoverDistance ? 'crosshair' : undefined, touchAction: 'none' }}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         <defs>
           <linearGradient id="elev-grad" x1="0" y1="0" x2="0" y2="1">

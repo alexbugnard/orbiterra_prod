@@ -48,10 +48,8 @@ export function AboutModal({ onClose }: AboutModalProps) {
     >
       {/* Modal */}
       <div
-        className="relative flex flex-col rounded-2xl overflow-hidden"
+        className="relative flex flex-col overflow-hidden w-[95vw] h-[92vh] rounded-2xl md:w-4/5 md:h-4/5"
         style={{
-          width: '80%',
-          height: '80%',
           background: 'rgba(15,23,42,0.97)',
           border: '1px solid rgba(51,65,85,0.8)',
           boxShadow: '0 32px 80px rgba(0,0,0,0.6)',
@@ -106,7 +104,7 @@ export function AboutModal({ onClose }: AboutModalProps) {
             {videos.length === 0 ? (
               <p className="text-slate-500 text-sm italic">{t('videosEmpty')}</p>
             ) : (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {videos.map((video) => (
                   <div key={video.id} className="rounded-xl overflow-hidden border border-slate-700 bg-slate-800/50">
                     {activeVideo === video.youtube_id ? (
@@ -174,7 +172,7 @@ export function AboutModal({ onClose }: AboutModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="px-8 py-4 border-t border-slate-700/50 flex-shrink-0 flex items-center justify-between">
+        <div className="px-4 py-4 border-t border-slate-700/50 flex-shrink-0 flex flex-wrap items-center justify-between gap-3 md:px-8">
           <div className="flex items-center gap-3">
             {/* Instagram */}
             <a
