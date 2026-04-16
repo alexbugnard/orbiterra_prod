@@ -91,7 +91,8 @@ export async function runStravaSync(): Promise<{ upserted: number; since: string
           lng: photo.location[1],
           url_large: url,
           title: photo.caption,
-          flickr_id: `strava_${photo.unique_id}`, // reuse flickr_id column as unique key
+          flickr_id: `strava_${photo.unique_id}`,
+          taken_at: activity.start_date, // required not-null field; use activity date as fallback
         }, { onConflict: 'flickr_id' })
       }
     }
