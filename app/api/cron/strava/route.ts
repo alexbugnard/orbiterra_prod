@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { timingSafeEqual } from 'crypto'
 import { createSupabaseClient } from '@/lib/supabase'
-import { refreshStravaToken, fetchStravaActivitiesSince, fetchStravaElevation } from '@/lib/strava'
+import { refreshStravaToken, fetchStravaActivitiesSince, fetchStravaElevation, fetchStravaPhotos } from '@/lib/strava'
 import { decodePolylineToGeoJSON } from '@/lib/polyline'
 
 // Earliest date to ever sync from — rides before this are ignored
@@ -65,7 +65,7 @@ export async function runStravaSync(): Promise<{ upserted: number; since: string
     )
     const elevation = await fetchStravaElevation(accessToken, activity.id)
 
-    await supabase.from('trips').upsert({
+    const { data: tripRow } = await supabase.from('trips').upsert({
       strava_id: activity.id,
       name: activity.name,
       start_date: activity.start_date,
@@ -76,7 +76,25 @@ export async function runStravaSync(): Promise<{ upserted: number; since: string
       start_lat: firstCoord ? firstCoord[1] : null,
       elevation: elevation ?? null,
       visible: true,
-    }, { onConflict: 'strava_id' })
+    }, { onConflict: 'strava_id' }).select('id').single()
+
+    // Sync Strava photos for this activity
+    if (tripRow?.id) {
+      const photos = await fetchStravaPhotos(accessToken, activity.id)
+      for (const photo of photos) {
+        if (!photo.location) continue // skip photos without GPS
+        const url = photo.urls['2048'] ?? photo.urls[Object.keys(photo.urls)[0]]
+        if (!url) continue
+        await supabase.from('waypoints').upsert({
+          trip_id: tripRow.id,
+          lat: photo.location[0],
+          lng: photo.location[1],
+          url_large: url,
+          title: photo.caption,
+          flickr_id: `strava_${photo.unique_id}`, // reuse flickr_id column as unique key
+        }, { onConflict: 'flickr_id' })
+      }
+    }
 
     upserted++
   }

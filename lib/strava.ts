@@ -82,6 +82,36 @@ export async function fetchStravaElevation(
   return points
 }
 
+export interface StravaPhoto {
+  unique_id: string
+  urls: Record<string, string>
+  caption: string | null
+  location: [number, number] | null // [lat, lng]
+}
+
+export async function fetchStravaPhotos(
+  accessToken: string,
+  activityId: number
+): Promise<StravaPhoto[]> {
+  const res = await fetch(
+    `${STRAVA_BASE}/api/v3/activities/${activityId}/photos?photo_sources=true&size=2048`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  )
+  if (!res.ok) return []
+
+  const data = await res.json()
+  if (!Array.isArray(data)) return []
+
+  return data
+    .filter((p: any) => p.urls && (p.location || true)) // keep all, filter by location later
+    .map((p: any) => ({
+      unique_id: p.unique_id ?? String(p.id),
+      urls: p.urls ?? {},
+      caption: p.caption ?? null,
+      location: Array.isArray(p.location) && p.location.length === 2 ? p.location : null,
+    }))
+}
+
 export async function fetchStravaActivitiesSince(
   accessToken: string,
   since: Date
