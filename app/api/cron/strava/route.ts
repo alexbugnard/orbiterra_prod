@@ -50,14 +50,11 @@ export async function runStravaSync(): Promise<{ upserted: number; fetched: numb
   const since = (!lastSynced || lastSynced < SYNC_EPOCH) ? SYNC_EPOCH : lastSynced
 
   const activities = await fetchStravaActivitiesSince(accessToken, since)
-  console.log(`[strava-sync] since=${since.toISOString()} fetched=${activities.length} activities`)
-  activities.forEach(a => console.log(`  → id=${a.id} type=${a.type} name="${a.name}"`))
 
   let upserted = 0
   for (const activity of activities) {
     // Skip non-ride activities
     if (activity.type && !['Ride', 'VirtualRide', 'EBikeRide', 'MountainBikeRide', 'GravelRide'].includes(activity.type)) {
-      console.log(`  [skip] ${activity.id} type=${activity.type}`)
       continue
     }
 
