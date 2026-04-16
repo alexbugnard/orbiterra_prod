@@ -407,8 +407,8 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
     <>
       <div ref={containerRef} className="w-full h-full" />
 
-      {/* Trip detail panel */}
-      <div
+      {/* Trip detail panel — hidden on trip detail page (externalHover mode) */}
+      {externalHover === undefined && <div
         className="absolute top-4 right-4 bottom-4 z-[1000] w-80 flex flex-col rounded-2xl overflow-hidden transition-all duration-300"
         style={{
           background: 'rgba(15,23,42,0.95)',
@@ -569,7 +569,7 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
             </div>
           </>
         )}
-      </div>
+      </div>}
 
       {selectedPhoto && (
         <PhotoModal
