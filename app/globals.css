@@ -49,6 +49,17 @@ body {
   color: #f8fafc !important;
 }
 
+/* Weather tooltip — strip Leaflet defaults, our HTML is self-styled */
+.weather-tooltip.leaflet-tooltip {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+.weather-tooltip.leaflet-tooltip::before {
+  display: none !important;
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
