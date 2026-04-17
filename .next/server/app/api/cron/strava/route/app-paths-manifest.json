@@ -1,0 +1,3 @@
+{
+  "/api/cron/strava/route": "app/api/cron/strava/route.js"
+}

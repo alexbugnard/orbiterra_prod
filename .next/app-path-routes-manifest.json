@@ -1,0 +1,8 @@
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/api/cron/strava/route": "/api/cron/strava",
+  "/api/cron/weather/route": "/api/cron/weather",
+  "/api/weather-points/route": "/api/weather-points",
+  "/map/page": "/map"
+}
