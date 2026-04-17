@@ -7,6 +7,7 @@ import { PhotoModal } from './PhotoModal'
 import { ElevationProfile } from './ElevationProfile'
 import { useIsMobile } from '@/lib/useIsMobile'
 import { computeElevationGain } from '@/lib/strava'
+import { WeatherLayer } from './WeatherLayer'
 
 interface Trip {
   id: string
@@ -174,6 +175,8 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
   const selectedTripIndexRef = useRef<number | null>(null)
   const hoverMarkerRef = useRef<any>(null)
   const cumDistsRef = useRef<number[] | null>(null)
+  const weatherLayerRef = useRef<WeatherLayer | null>(null)
+  const [showWeather, setShowWeather] = useState(false)
   const [selectedPhoto, setSelectedPhoto] = useState<Waypoint | null>(null)
   const [selectedTripIndex, setSelectedTripIndex] = useState<number | null>(null)
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null)
@@ -249,6 +252,22 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hoveredDistance, externalHover?.distance, selectedTripIndex, trips])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    if (!showWeather) {
+      weatherLayerRef.current?.hide(map)
+      return
+    }
+    if (!weatherLayerRef.current) {
+      const wl = new WeatherLayer()
+      weatherLayerRef.current = wl
+      wl.addTo(map).then(() => wl.load(map).then(() => wl.show(map)))
+    } else {
+      weatherLayerRef.current.load(map).then(() => weatherLayerRef.current!.show(map))
+    }
+  }, [showWeather])
 
   function selectTrip(index: number) {
     setSelectedTripIndex(index)
@@ -432,11 +451,14 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
       if (allLatLngs.length > 0) {
         map.fitBounds(L.latLngBounds(allLatLngs), { padding: [40, 40] })
       }
+
     }
 
     initMap()
     return () => {
       cancelled = true
+      weatherLayerRef.current?.remove()
+      weatherLayerRef.current = null
       mapRef.current?.remove()
       mapRef.current = null
       polylinesRef.current = []
@@ -447,7 +469,7 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
   const nextIndex = selectedTripIndex !== null && selectedTripIndex < trips.length - 1 ? selectedTripIndex + 1 : null
 
   return (
-    <>
+    <div className="relative w-full h-full">
       <div ref={containerRef} className="w-full h-full" />
 
       {/* Trip detail panel — hidden on trip detail page (externalHover mode) */}
@@ -633,6 +655,23 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
         )}
       </div>}
 
+      {/* Météo toggle button */}
+      {externalHover === undefined && (
+        <button
+          onClick={() => setShowWeather((v) => !v)}
+          className="absolute top-4 left-4 z-[9999] flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all"
+          style={{
+            background: showWeather ? 'rgba(34,211,238,0.2)' : 'rgba(15,23,42,0.85)',
+            border: showWeather ? '1px solid rgba(34,211,238,0.6)' : '1px solid rgba(51,65,85,0.8)',
+            backdropFilter: 'blur(8px)',
+            color: showWeather ? '#22d3ee' : '#94a3b8',
+          }}
+        >
+          <span style={{ fontSize: 16 }}>⛅</span>
+          Météo
+        </button>
+      )}
+
       {selectedPhoto && (
         <PhotoModal
           imageUrl={selectedPhoto.url_large}
@@ -691,6 +730,8 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
           )}
         </div>
       )}
-    </>
+
+
+    </div>
   )
 }

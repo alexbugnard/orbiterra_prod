@@ -1,0 +1,3 @@
+{
+  "/api/cron/weather/route": "app/api/cron/weather/route.js"
+}
