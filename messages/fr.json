@@ -1,0 +1,43 @@
+{
+  "nav": {
+    "map": "Voir la carte",
+    "about": "À propos"
+  },
+  "landing": {
+    "cta": "Voir le voyage"
+  },
+  "map": {
+    "rides": "Étapes",
+    "distance": "Distance",
+    "photos": "Photos",
+    "americasCrossing": "Traversée Amériques",
+    "left": "Restant",
+    "rideCount": "Étape {index} / {total}",
+    "km": "km",
+    "elevation": "Dénivelé +",
+    "countries": "Pays",
+    "country": "Pays",
+    "noJournal": "Aucun journal pour cette étape.",
+    "viewTrip": "Voir l'étape",
+    "previous": "Précédent",
+    "next": "Suivant",
+    "loading": "Chargement de la carte…",
+    "videosTitle": "Vidéos du jour"
+  },
+  "trip": {
+    "backToMap": "← Retour à la carte"
+  },
+  "about": {
+    "title": "À propos",
+    "close": "Fermer",
+    "goalTitle": "L'objectif",
+    "goalText": "Relier Deadhorse (Alaska) à Ushuaia (Argentine) à vélo — environ 30 000 km à travers deux continents, des glaces arctiques aux vents de Patagonie. Un voyage en autonomie, au rythme des routes et des rencontres.",
+    "vincentTitle": "Qui est Vincent ?",
+    "vincentText": "Vincent est un cycliste passionné et aventurier dans l'âme. Après des années à rêver de la grande traversée des Amériques, il a tout quitté pour enfourcher son vélo et prendre la route. Toujours le sourire aux lèvres, une tente sur le porte-bagages et une curiosité sans limites pour les cultures et les paysages qu'il traverse.",
+    "sponsorsTitle": "Sponsors & soutiens",
+    "sponsorsText": "Ce voyage est rendu possible grâce au soutien de nos partenaires. Vous souhaitez soutenir l'aventure ? Contactez-nous.",
+    "videosTitle": "Vidéos",
+    "videosEmpty": "Aucune vidéo pour l'instant.",
+    "videoPlay": "Lire"
+  }
+}

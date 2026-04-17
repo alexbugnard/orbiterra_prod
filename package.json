@@ -1,28 +1,45 @@
 {
-  "name": "vinz-scaffold",
+  "name": "feature-biketrip",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "gen:password": "node -e \"const b=require('bcryptjs'); const p=process.argv[1]; if(!p){console.error('Usage: npm run gen:password -- yourpassword');process.exit(1);} b.hash(p,10).then(h=>console.log('\\nADMIN_PASSWORD_HASH='+h+'\\n'))\"",
+    "sync:strava": "node -e \"fetch('http://localhost:3000/api/cron/strava',{headers:{Authorization:'Bearer '+process.env.CRON_SECRET}}).then(r=>r.json()).then(console.log).catch(console.error)\"",
+    "sync:flickr": "node -e \"fetch('http://localhost:3000/api/cron/flickr',{headers:{Authorization:'Bearer '+process.env.CRON_SECRET}}).then(r=>r.json()).then(console.log).catch(console.error)\"",
+    "seed": "node scripts/seed.mjs"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.103.3",
-    "@types/leaflet": "^1.9.21",
+    "@mapbox/polyline": "^1.2.1",
+    "@supabase/supabase-js": "^2.103.1",
+    "bcryptjs": "^3.0.3",
     "leaflet": "^1.9.4",
-    "next": "16.2.4",
+    "next": "16.2.3",
+    "next-auth": "5.0.0-beta.31",
+    "next-intl": "^4.9.1",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/leaflet": "^1.9.21",
+    "@types/mapbox__polyline": "^1.0.5",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.4",
+    "eslint-config-next": "16.2.3",
+    "jest": "^30.3.0",
+    "jest-environment-jsdom": "^30.3.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
