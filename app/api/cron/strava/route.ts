@@ -8,9 +8,14 @@ import { decodePolylineToGeoJSON } from '@/lib/polyline'
 const SYNC_EPOCH = new Date('2026-04-01T00:00:00Z')
 
 export function verifyCronSecret(headers: Headers): boolean {
+  const secret = process.env.CRON_SECRET
+  if (!secret) {
+    console.error('[cron] CRON_SECRET env var is not set')
+    return false
+  }
   const auth = headers.get('Authorization')
   if (!auth) return false
-  const expected = `Bearer ${process.env.CRON_SECRET}`
+  const expected = `Bearer ${secret}`
   try {
     return timingSafeEqual(Buffer.from(auth), Buffer.from(expected))
   } catch {
@@ -122,6 +127,6 @@ export async function GET(request: Request) {
     return NextResponse.json(result)
   } catch (err) {
     console.error('Strava sync error:', err)
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    return NextResponse.json({ error: 'Sync failed' }, { status: 500 })
   }
 }

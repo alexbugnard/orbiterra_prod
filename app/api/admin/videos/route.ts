@@ -38,9 +38,12 @@ export async function DELETE(request: Request) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await request.json()
+  if (!id || typeof id !== 'string') {
+    return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+  }
   const supabase = createSupabaseClient()
   const { error } = await supabase.from('videos').delete().eq('id', id)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) return NextResponse.json({ error: 'Delete failed' }, { status: 500 })
   return NextResponse.json({ ok: true })
 }

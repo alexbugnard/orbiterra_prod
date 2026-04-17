@@ -1,20 +1,8 @@
 import { NextResponse } from 'next/server'
-import { timingSafeEqual } from 'crypto'
-import { runStravaSync } from '../strava/route'
+import { runStravaSync, verifyCronSecret } from '../strava/route'
 import { fetchChannelVideos } from '@/lib/youtube'
 import { fetchWeatherForPoints } from '@/lib/open-meteo'
 import { createSupabaseClient } from '@/lib/supabase'
-
-function verifyCronSecret(headers: Headers): boolean {
-  const auth = headers.get('Authorization')
-  if (!auth) return false
-  const expected = `Bearer ${process.env.CRON_SECRET}`
-  try {
-    return timingSafeEqual(Buffer.from(auth), Buffer.from(expected))
-  } catch {
-    return false
-  }
-}
 
 export async function GET(request: Request) {
   if (!verifyCronSecret(request.headers as unknown as Headers)) {
@@ -27,7 +15,7 @@ export async function GET(request: Request) {
   try {
     results.strava = await runStravaSync()
   } catch (err) {
-    results.strava = { error: String(err) }
+    results.strava = { error: 'Sync failed' }
   }
 
   // 2. YouTube sync
@@ -46,7 +34,7 @@ export async function GET(request: Request) {
     }
     results.youtube = { upserted }
   } catch (err) {
-    results.youtube = { error: String(err) }
+    results.youtube = { error: 'Sync failed' }
   }
 
   // 3. Weather sync
@@ -78,7 +66,7 @@ export async function GET(request: Request) {
       results.weather = { skipped: 'no points seeded' }
     }
   } catch (err) {
-    results.weather = { error: String(err) }
+    results.weather = { error: 'Sync failed' }
   }
 
   return NextResponse.json(results)

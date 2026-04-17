@@ -14,8 +14,10 @@ function parseRssFeed(xml: string): YoutubeVideo[] {
     const publishedMatch = entry.match(/<published>([^<]+)<\/published>/)
 
     if (idMatch && titleMatch && publishedMatch) {
+      const youtubeId = idMatch[1]
+      if (!/^[A-Za-z0-9_-]{11}$/.test(youtubeId)) continue
       videos.push({
-        youtube_id: idMatch[1],
+        youtube_id: youtubeId,
         title: titleMatch[1],
         published_at: publishedMatch[1],
       })

@@ -1,3 +1,5 @@
+import { randomBytes } from 'crypto'
+
 const STRAVA_BASE = 'https://www.strava.com'
 
 export function computeElevationGain(elevation: [number, number][]): number {
@@ -39,14 +41,16 @@ export interface StravaActivity {
   map: { summary_polyline: string }
 }
 
-export function buildStravaAuthUrl(redirectUri: string): string {
+export function buildStravaAuthUrl(redirectUri: string): { url: string; state: string } {
+  const state = randomBytes(16).toString('hex')
   const params = new URLSearchParams({
     client_id: process.env.STRAVA_CLIENT_ID!,
     redirect_uri: redirectUri,
     response_type: 'code',
     scope: 'activity:read_all',
+    state,
   })
-  return `${STRAVA_BASE}/oauth/authorize?${params}`
+  return { url: `${STRAVA_BASE}/oauth/authorize?${params}`, state }
 }
 
 export function parseTokenResponse(raw: {

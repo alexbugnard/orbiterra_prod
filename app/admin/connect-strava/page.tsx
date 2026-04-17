@@ -3,7 +3,7 @@ import { buildStravaAuthUrl } from '@/lib/strava'
 export default function ConnectStravaPage() {
   const callbackUrl =
     process.env.NEXTAUTH_URL + '/api/strava/callback'
-  const authUrl = buildStravaAuthUrl(callbackUrl)
+  const { url: authUrl } = buildStravaAuthUrl(callbackUrl)
 
   return (
     <div>

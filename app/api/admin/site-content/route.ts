@@ -13,6 +13,14 @@ export async function PATCH(request: Request) {
 
   for (const [key, value] of Object.entries(body)) {
     if (!allowedKeys.includes(key)) continue
+    if (key === 'hero_image_url') {
+      try {
+        const u = new URL(value)
+        if (!['https:', 'http:'].includes(u.protocol)) continue
+      } catch {
+        continue
+      }
+    }
     await supabase
       .from('site_content')
       .upsert({ key, value }, { onConflict: 'key' })
