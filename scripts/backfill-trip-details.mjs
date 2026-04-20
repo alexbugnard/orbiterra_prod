@@ -26,8 +26,29 @@ async function refreshToken() {
   return refreshed.access_token
 }
 
+function findPeakLocations(streams) {
+  const { time, latlng, distance, altitude } = streams
+  let maxSpeed = 0, maxSpeedIdx = -1
+  for (let i = 1; i < time.length; i++) {
+    const dt = time[i] - time[i - 1]
+    if (dt <= 0 || dt > 60) continue
+    const speed = (distance[i] - distance[i - 1]) / dt
+    if (speed > maxSpeed) { maxSpeed = speed; maxSpeedIdx = i }
+  }
+  let maxAlt = -Infinity, maxAltIdx = -1
+  for (let i = 0; i < altitude.length; i++) {
+    if (altitude[i] > maxAlt) { maxAlt = altitude[i]; maxAltIdx = i }
+  }
+  return {
+    max_speed_lat: maxSpeedIdx >= 0 ? latlng[maxSpeedIdx][0] : null,
+    max_speed_lng: maxSpeedIdx >= 0 ? latlng[maxSpeedIdx][1] : null,
+    elev_high_lat: maxAltIdx >= 0 ? latlng[maxAltIdx][0] : null,
+    elev_high_lng: maxAltIdx >= 0 ? latlng[maxAltIdx][1] : null,
+  }
+}
+
 function detectBreaks(streams, minGapSeconds = 600) {
-  const { time, latlng, distance } = streams
+  const { time, latlng, distance, altitude } = streams
   const breaks = []
   for (let i = 1; i < time.length; i++) {
     const gap = time[i] - time[i - 1]
@@ -44,8 +65,8 @@ const { data: trips } = await supabase.from('trips').select('id, strava_id').not
 console.log(`Backfilling ${trips.length} trips…`)
 
 for (const trip of trips) {
-  // Skip fake test trips (strava_id > 9999999000 are seeds)
-  if (trip.strava_id > 9999999000) {
+  // Skip fake test trips
+  if (trip.strava_id === 9999999999) {
     console.log(`  [${trip.strava_id}] skipping test trip`)
     continue
   }
@@ -55,14 +76,16 @@ for (const trip of trips) {
   const activity = await actRes.json()
 
   await sleep(1100)
-  const streamRes = await fetch(`${STRAVA_BASE}/api/v3/activities/${trip.strava_id}/streams?keys=time,latlng,distance&key_by_type=true`, { headers: { Authorization: `Bearer ${accessToken}` } })
+  const streamRes = await fetch(`${STRAVA_BASE}/api/v3/activities/${trip.strava_id}/streams?keys=time,latlng,distance,altitude&key_by_type=true`, { headers: { Authorization: `Bearer ${accessToken}` } })
   let breaks = null
+  let peaks = {}
   if (streamRes.ok) {
     const data = await streamRes.json()
-    const streams = { time: data.time?.data ?? [], latlng: data.latlng?.data ?? [], distance: data.distance?.data ?? [] }
+    const streams = { time: data.time?.data ?? [], latlng: data.latlng?.data ?? [], distance: data.distance?.data ?? [], altitude: data.altitude?.data ?? [] }
     if (streams.time.length > 0) {
       const detected = detectBreaks(streams)
       breaks = detected.length > 0 ? detected : null
+      peaks = findPeakLocations(streams)
     }
   }
 
@@ -70,9 +93,10 @@ for (const trip of trips) {
     max_speed_ms: activity.max_speed ?? null,
     elev_high: activity.elev_high ?? null,
     breaks,
+    ...peaks,
   }).eq('id', trip.id)
 
-  console.log(`  [${trip.strava_id}] max_speed=${activity.max_speed?.toFixed(1) ?? 'null'} elev_high=${activity.elev_high ?? 'null'} breaks=${breaks?.length ?? 0}`)
+  console.log(`  [${trip.strava_id}] max_speed=${activity.max_speed?.toFixed(1) ?? 'null'} elev_high=${activity.elev_high ?? 'null'} breaks=${breaks?.length ?? 0} peaks=${JSON.stringify(peaks)}`)
   await sleep(1100)
 }
 console.log('Backfill complete.')

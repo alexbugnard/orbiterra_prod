@@ -50,9 +50,14 @@ export default async function LandingPage() {
 
         {/* Content */}
         <div className="relative z-10 max-w-2xl">
-          <div className="inline-flex items-center gap-2 bg-orange-500/10 border border-orange-500/20 text-orange-400 text-sm font-medium px-4 py-1.5 rounded-full mb-8">
-            <span className="w-1.5 h-1.5 bg-orange-400 rounded-full animate-pulse" />
-            Alaska → Ushuaia
+          <div className="mb-8">
+            <Image
+              src="/logo/Capture d'écran 2026-04-20 085244.png"
+              alt="OrbiTerra"
+              width={160}
+              height={160}
+              className="mx-auto rounded-full bg-white/90 p-2 shadow-xl"
+            />
           </div>
 
           <h1 className="text-5xl md:text-6xl font-extrabold text-white mb-4 leading-tight tracking-tight">

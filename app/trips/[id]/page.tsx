@@ -43,6 +43,10 @@ export default async function TripPage({ params }: { params: Promise<{ id: strin
     max_speed_ms: null,
     elev_high: null,
     breaks: null,
+    max_speed_lat: null,
+    max_speed_lng: null,
+    elev_high_lat: null,
+    elev_high_lng: null,
   }
 
   return (

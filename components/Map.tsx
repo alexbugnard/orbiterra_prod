@@ -22,6 +22,10 @@ interface Trip {
   max_speed_ms: number | null
   elev_high: number | null
   breaks: { lat: number; lng: number; duration_min: number; distance_m: number }[] | null
+  max_speed_lat: number | null
+  max_speed_lng: number | null
+  elev_high_lat: number | null
+  elev_high_lng: number | null
 }
 
 interface Waypoint {
@@ -354,6 +358,28 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
         const marker = Lmap.marker([b.lat, b.lng], { icon }).addTo(mapRef.current!)
         breakMarkersRef.current.push(marker)
       })
+    }
+
+    // Peak markers: max speed ⚡ and max altitude ▲
+    if (Lmap && mapRef.current) {
+      if (selectedT.max_speed_lat != null && selectedT.max_speed_lng != null) {
+        const spd = selectedT.max_speed_ms != null ? `${Math.round(selectedT.max_speed_ms * 3.6)} km/h` : '⚡'
+        const icon = Lmap.divIcon({
+          html: `<div style="background:rgba(15,23,42,0.9);border:2px solid #3b82f6;border-radius:6px;padding:2px 6px;font-size:11px;font-weight:600;color:#3b82f6;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.4)">⚡ ${spd}</div>`,
+          className: '',
+          iconAnchor: [28, 12],
+        })
+        breakMarkersRef.current.push(Lmap.marker([selectedT.max_speed_lat, selectedT.max_speed_lng], { icon }).addTo(mapRef.current!))
+      }
+      if (selectedT.elev_high_lat != null && selectedT.elev_high_lng != null) {
+        const alt = selectedT.elev_high != null ? `${Math.round(selectedT.elev_high)} m` : '▲'
+        const icon = Lmap.divIcon({
+          html: `<div style="background:rgba(15,23,42,0.9);border:2px solid #10b981;border-radius:6px;padding:2px 6px;font-size:11px;font-weight:600;color:#10b981;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.4)">▲ ${alt}</div>`,
+          className: '',
+          iconAnchor: [28, 12],
+        })
+        breakMarkersRef.current.push(Lmap.marker([selectedT.elev_high_lat, selectedT.elev_high_lng], { icon }).addTo(mapRef.current!))
+      }
     }
 
     // Highlight selected, dim others

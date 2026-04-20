@@ -30,6 +30,10 @@ interface Trip {
   max_speed_ms: number | null
   elev_high: number | null
   breaks: { lat: number; lng: number; duration_min: number; distance_m: number }[] | null
+  max_speed_lat: number | null
+  max_speed_lng: number | null
+  elev_high_lat: number | null
+  elev_high_lng: number | null
 }
 
 interface Waypoint {

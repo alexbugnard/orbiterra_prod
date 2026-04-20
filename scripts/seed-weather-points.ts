@@ -66,12 +66,19 @@ async function reverseGeocode(lat: number, lng: number): Promise<string | null> 
 }
 
 async function fetchElevations(points: { lat: number; lng: number }[]): Promise<number[]> {
-  const lats = points.map((p) => p.lat.toFixed(4)).join(',')
-  const lngs = points.map((p) => p.lng.toFixed(4)).join(',')
-  const res = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`)
-  if (!res.ok) return points.map(() => 0)
-  const data: any = await res.json()
-  return Array.isArray(data.elevation) ? data.elevation : [data.elevation]
+  const CHUNK = 100
+  const results: number[] = []
+  for (let i = 0; i < points.length; i += CHUNK) {
+    const chunk = points.slice(i, i + CHUNK)
+    const lats = chunk.map((p) => p.lat.toFixed(4)).join(',')
+    const lngs = chunk.map((p) => p.lng.toFixed(4)).join(',')
+    const res = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lats}&longitude=${lngs}`)
+    if (!res.ok) { results.push(...chunk.map(() => 0)); continue }
+    const data: any = await res.json()
+    const elevs = Array.isArray(data.elevation) ? data.elevation : [data.elevation]
+    results.push(...elevs)
+  }
+  return results
 }
 
 async function main() {

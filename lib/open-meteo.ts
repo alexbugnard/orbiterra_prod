@@ -32,15 +32,9 @@ export function parseOpenMeteoResponse(raw: { daily: OpenMeteoDaily }): WeatherF
   }
 }
 
-/**
- * Fetch forecasts for multiple points in a single Open-Meteo request.
- * Open-Meteo supports comma-separated lat/lng lists.
- */
-export async function fetchWeatherForPoints(
-  points: { lat: number; lng: number }[]
-): Promise<WeatherForecast[]> {
-  if (points.length === 0) return []
+const CHUNK_SIZE = 50
 
+async function fetchWeatherChunk(points: { lat: number; lng: number }[]): Promise<WeatherForecast[]> {
   const lats = points.map((p) => p.lat.toFixed(4)).join(',')
   const lngs = points.map((p) => p.lng.toFixed(4)).join(',')
 
@@ -62,10 +56,20 @@ export async function fetchWeatherForPoints(
   if (!res.ok) throw new Error(`Open-Meteo fetch failed: ${res.status}`)
 
   const data = await res.json()
-
-  // Single point: Open-Meteo returns a plain object with `daily`
-  // Multiple points: returns an array
   const items: { daily: OpenMeteoDaily }[] = Array.isArray(data) ? data : [data]
-
   return items.map(parseOpenMeteoResponse)
+}
+
+export async function fetchWeatherForPoints(
+  points: { lat: number; lng: number }[]
+): Promise<WeatherForecast[]> {
+  if (points.length === 0) return []
+
+  const results: WeatherForecast[] = []
+  for (let i = 0; i < points.length; i += CHUNK_SIZE) {
+    const chunk = points.slice(i, i + CHUNK_SIZE)
+    const forecasts = await fetchWeatherChunk(chunk)
+    results.push(...forecasts)
+  }
+  return results
 }

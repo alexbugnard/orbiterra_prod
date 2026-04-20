@@ -115,6 +115,7 @@ export interface StravaStreams {
   time: number[]
   latlng: [number, number][]
   distance: number[]
+  altitude: number[]
 }
 
 export async function fetchStravaStreams(
@@ -122,7 +123,7 @@ export async function fetchStravaStreams(
   activityId: number
 ): Promise<StravaStreams | null> {
   const res = await fetch(
-    `${STRAVA_BASE}/api/v3/activities/${activityId}/streams?keys=time,latlng,distance&key_by_type=true`,
+    `${STRAVA_BASE}/api/v3/activities/${activityId}/streams?keys=time,latlng,distance,altitude&key_by_type=true`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
   )
   if (!res.ok) return null
@@ -130,8 +131,44 @@ export async function fetchStravaStreams(
   const time: number[] = data.time?.data ?? []
   const latlng: [number, number][] = data.latlng?.data ?? []
   const distance: number[] = data.distance?.data ?? []
+  const altitude: number[] = data.altitude?.data ?? []
   if (time.length === 0 || latlng.length === 0) return null
-  return { time, latlng, distance }
+  return { time, latlng, distance, altitude }
+}
+
+export interface PeakLocations {
+  max_speed_lat: number | null
+  max_speed_lng: number | null
+  elev_high_lat: number | null
+  elev_high_lng: number | null
+}
+
+export function findPeakLocations(streams: StravaStreams): PeakLocations {
+  const { time, latlng, distance, altitude } = streams
+
+  // Max speed: derive from distance/time derivative, skip gaps >60s (breaks)
+  let maxSpeed = 0
+  let maxSpeedIdx = -1
+  for (let i = 1; i < time.length; i++) {
+    const dt = time[i] - time[i - 1]
+    if (dt <= 0 || dt > 60) continue
+    const speed = (distance[i] - distance[i - 1]) / dt
+    if (speed > maxSpeed) { maxSpeed = speed; maxSpeedIdx = i }
+  }
+
+  // Max altitude
+  let maxAlt = -Infinity
+  let maxAltIdx = -1
+  for (let i = 0; i < altitude.length; i++) {
+    if (altitude[i] > maxAlt) { maxAlt = altitude[i]; maxAltIdx = i }
+  }
+
+  return {
+    max_speed_lat: maxSpeedIdx >= 0 ? latlng[maxSpeedIdx][0] : null,
+    max_speed_lng: maxSpeedIdx >= 0 ? latlng[maxSpeedIdx][1] : null,
+    elev_high_lat: maxAltIdx >= 0 ? latlng[maxAltIdx][0] : null,
+    elev_high_lng: maxAltIdx >= 0 ? latlng[maxAltIdx][1] : null,
+  }
 }
 
 export interface TripBreak {

@@ -59,7 +59,18 @@
       "Bash(cp C:/Projects/vinz-scaffold/package-lock.json C:/Projects/vinz/package-lock.json)",
       "Bash(cp C:/Projects/vinz-scaffold/tsconfig.json C:/Projects/vinz/tsconfig.json)",
       "Bash(cp C:/Projects/vinz-scaffold/next.config.ts C:/Projects/vinz/next.config.ts)",
-      "Bash(cp C:/Projects/vinz-scaffold/postcss.config.mjs C:/Projects/vinz/postcss.config.mjs)"
+      "Bash(cp C:/Projects/vinz-scaffold/postcss.config.mjs C:/Projects/vinz/postcss.config.mjs)",
+      "Bash(node *)",
+      "Bash(npx ts-node *)",
+      "Bash(magick --version)",
+      "Bash(convert --version)",
+      "Bash(npx tsc *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git -C /c/Projects/vinz add lib/strava.ts)",
+      "Bash(git -C /c/Projects/vinz commit -m \"feat: add fetchStravaStreams and detectBreaks to strava lib\")",
+      "Bash(git commit *0)",
+      "Bash(git commit *)"
     ]
   }
 }

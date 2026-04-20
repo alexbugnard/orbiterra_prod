@@ -65,7 +65,7 @@ async function getMapData() {
   const [{ data: trips }, { data: waypoints }, { data: plannedRoutes }, { data: videos }] = await Promise.all([
     supabase
       .from('trips')
-      .select('id, name, start_date, distance_m, coordinates, journal_fr, journal_en, start_lat, start_lng, elevation, country, max_speed_ms, elev_high, breaks')
+      .select('id, name, start_date, distance_m, coordinates, journal_fr, journal_en, start_lat, start_lng, elevation, country, max_speed_ms, elev_high, breaks, max_speed_lat, max_speed_lng, elev_high_lat, elev_high_lng')
       .eq('visible', true)
       .order('start_date', { ascending: true }),
     supabase
@@ -95,6 +95,10 @@ async function getMapData() {
     max_speed_ms: (t.max_speed_ms ?? null) as number | null,
     elev_high: (t.elev_high ?? null) as number | null,
     breaks: (t.breaks ?? null) as { lat: number; lng: number; duration_min: number; distance_m: number }[] | null,
+    max_speed_lat: (t.max_speed_lat ?? null) as number | null,
+    max_speed_lng: (t.max_speed_lng ?? null) as number | null,
+    elev_high_lat: (t.elev_high_lat ?? null) as number | null,
+    elev_high_lng: (t.elev_high_lng ?? null) as number | null,
   }))
 
   const formattedPlannedRoutes = (plannedRoutes ?? []).map((r: any) => ({

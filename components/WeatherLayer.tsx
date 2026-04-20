@@ -14,16 +14,19 @@ const ICON_EMOJI: Record<string, string> = {
 
 const WEATHER_ZOOM_THRESHOLD = 9
 
-function buildIconHtml(point: WeatherPointResponse): string {
+function buildIconHtml(point: WeatherPointResponse, theme: 'dark' | 'topo' = 'dark'): string {
   const emoji = point.icon ? (ICON_EMOJI[point.icon] ?? '☁️') : '☁️'
+  const bg = theme === 'topo' ? 'rgba(255,255,255,0.95)' : 'rgba(15,23,42,0.88)'
+  const border = theme === 'topo' ? '1px solid rgba(30,41,59,0.35)' : '1px solid rgba(34,211,238,0.4)'
+  const shadow = theme === 'topo' ? '0 2px 6px rgba(0,0,0,0.25)' : '0 2px 6px rgba(0,0,0,0.5)'
   return `<div style="
     font-size:18px;line-height:1;
-    background:rgba(15,23,42,0.88);
-    border:1px solid rgba(34,211,238,0.4);
+    background:${bg};
+    border:${border};
     border-radius:50%;
     width:32px;height:32px;
     display:flex;align-items:center;justify-content:center;
-    box-shadow:0 2px 6px rgba(0,0,0,0.5);
+    box-shadow:${shadow};
     cursor:default;
   ">${emoji}</div>`
 }
@@ -72,7 +75,9 @@ function buildTooltipHtml(point: WeatherPointResponse): string {
 export class WeatherLayer {
   private layerGroup: LayerGroup | null = null
   private markers: Marker[] = []
+  private points: WeatherPointResponse[] = []
   private loaded = false
+  private theme: 'dark' | 'topo' = 'dark'
 
   async addTo(map: LeafletMap): Promise<void> {
     const L = (await import('leaflet')).default
@@ -89,11 +94,13 @@ export class WeatherLayer {
     const points: WeatherPointResponse[] = await res.json()
     const L = (await import('leaflet')).default
 
+    this.points = points
+
     for (const point of points) {
       if (point.icon === null) continue
 
       const icon = L.divIcon({
-        html: buildIconHtml(point),
+        html: buildIconHtml(point, this.theme),
         className: '',
         iconSize: [32, 32],
         iconAnchor: [16, 16],
@@ -139,6 +146,22 @@ export class WeatherLayer {
       map.removeLayer(this.layerGroup)
     }
     map.off('zoomend')
+  }
+
+  async restyle(theme: 'dark' | 'topo'): Promise<void> {
+    this.theme = theme
+    if (!this.loaded) return
+    const L = (await import('leaflet')).default
+    this.markers.forEach((marker, i) => {
+      const point = this.points.filter(p => p.icon !== null)[i]
+      if (!point) return
+      marker.setIcon(L.divIcon({
+        html: buildIconHtml(point, theme),
+        className: '',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+      }))
+    })
   }
 
   remove(): void {

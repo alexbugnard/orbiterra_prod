@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { timingSafeEqual } from 'crypto'
 import { createSupabaseClient } from '@/lib/supabase'
-import { refreshStravaToken, fetchStravaActivitiesSince, fetchStravaElevation, fetchStravaStreams, detectBreaks, fetchStravaPhotos, reverseGeocodeCountry } from '@/lib/strava'
+import { refreshStravaToken, fetchStravaActivitiesSince, fetchStravaElevation, fetchStravaStreams, detectBreaks, findPeakLocations, fetchStravaPhotos, reverseGeocodeCountry } from '@/lib/strava'
 import { decodePolylineToGeoJSON } from '@/lib/polyline'
 
 // Earliest date to ever sync from — rides before this are ignored
@@ -71,6 +71,7 @@ export async function runStravaSync(): Promise<{ upserted: number; fetched: numb
     const elevation = await fetchStravaElevation(accessToken, activity.id)
     const streams = await fetchStravaStreams(accessToken, activity.id)
     const breaks = streams ? detectBreaks(streams) : null
+    const peaks = streams ? findPeakLocations(streams) : null
     const country = firstCoord
       ? await reverseGeocodeCountry(firstCoord[1], firstCoord[0])
       : null
@@ -88,6 +89,7 @@ export async function runStravaSync(): Promise<{ upserted: number; fetched: numb
       max_speed_ms: activity.max_speed ?? null,
       elev_high: activity.elev_high ?? null,
       breaks: breaks && breaks.length > 0 ? breaks : null,
+      ...(peaks ?? {}),
       country,
       visible: true,
     }, { onConflict: 'strava_id' }).select('id').single()
