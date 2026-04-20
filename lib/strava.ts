@@ -39,6 +39,8 @@ export interface StravaActivity {
   elapsed_time: number
   distance: number
   map: { summary_polyline: string }
+  max_speed: number | null
+  elev_high: number | null
 }
 
 export function buildStravaAuthUrl(redirectUri: string): { url: string; state: string } {
@@ -107,6 +109,53 @@ export async function fetchStravaElevation(
     points.push([Math.round(distances[i] ?? 0), Math.round(altitudes[i])])
   }
   return points
+}
+
+export interface StravaStreams {
+  time: number[]
+  latlng: [number, number][]
+  distance: number[]
+}
+
+export async function fetchStravaStreams(
+  accessToken: string,
+  activityId: number
+): Promise<StravaStreams | null> {
+  const res = await fetch(
+    `${STRAVA_BASE}/api/v3/activities/${activityId}/streams?keys=time,latlng,distance&key_by_type=true`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  )
+  if (!res.ok) return null
+  const data = await res.json()
+  const time: number[] = data.time?.data ?? []
+  const latlng: [number, number][] = data.latlng?.data ?? []
+  const distance: number[] = data.distance?.data ?? []
+  if (time.length === 0 || latlng.length === 0) return null
+  return { time, latlng, distance }
+}
+
+export interface TripBreak {
+  lat: number
+  lng: number
+  duration_min: number
+  distance_m: number
+}
+
+export function detectBreaks(streams: StravaStreams, minGapSeconds = 600): TripBreak[] {
+  const { time, latlng, distance } = streams
+  const breaks: TripBreak[] = []
+  for (let i = 1; i < time.length; i++) {
+    const gap = time[i] - time[i - 1]
+    if (gap >= minGapSeconds) {
+      breaks.push({
+        lat: latlng[i - 1][0],
+        lng: latlng[i - 1][1],
+        duration_min: Math.round(gap / 60),
+        distance_m: Math.round(distance[i - 1] ?? 0),
+      })
+    }
+  }
+  return breaks
 }
 
 export interface StravaPhoto {
