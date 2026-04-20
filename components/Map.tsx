@@ -19,6 +19,9 @@ interface Trip {
   coordinates: [number, number][]
   elevation: [number, number][] | null
   country?: string | null
+  max_speed_ms: number | null
+  elev_high: number | null
+  breaks: { lat: number; lng: number; duration_min: number; distance_m: number }[] | null
 }
 
 interface Waypoint {
@@ -177,6 +180,10 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
   const cumDistsRef = useRef<number[] | null>(null)
   const weatherLayerRef = useRef<WeatherLayer | null>(null)
   const [showWeather, setShowWeather] = useState(false)
+  const [basemap, setBasemap] = useState<'dark' | 'topo'>('dark')
+  const tileLayerRef = useRef<any>(null)
+  const plannedLinesRef = useRef<any[]>([])
+  const breakMarkersRef = useRef<any[]>([])
   const [selectedPhoto, setSelectedPhoto] = useState<Waypoint | null>(null)
   const [selectedTripIndex, setSelectedTripIndex] = useState<number | null>(null)
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null)
@@ -269,6 +276,49 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
     }
   }, [showWeather])
 
+  useEffect(() => {
+    const map = mapRef.current
+    const L = (window as any)._L
+    if (!map || !L || !tileLayerRef.current) return
+    tileLayerRef.current.remove()
+    if (basemap === 'topo') {
+      tileLayerRef.current = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
+        maxZoom: 17,
+      }).addTo(map)
+    } else {
+      tileLayerRef.current = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 20,
+      }).addTo(map)
+    }
+  }, [basemap])
+
+  // Restyle map objects when basemap changes
+  useEffect(() => {
+    if (!mapRef.current) return
+    const tripColor = basemap === 'topo' ? '#dc2626' : '#f97316'
+    const plannedColor = basemap === 'topo' ? '#1d4ed8' : '#22d3ee'
+
+    // Trip polylines
+    polylinesRef.current.forEach((pl) => pl.setStyle({ color: tripColor }))
+    const glowLines = (mapRef.current as any)._glowLines as any[]
+    if (glowLines) glowLines.forEach((pl: any) => pl.setStyle({ color: tripColor }))
+
+    // Hover marker
+    if (hoverMarkerRef.current) hoverMarkerRef.current.setStyle({ color: tripColor, fillColor: tripColor })
+
+    // Planned route lines
+    plannedLinesRef.current.forEach(({ glow, line }) => {
+      glow.setStyle({ color: plannedColor })
+      line.setStyle({ color: plannedColor })
+    })
+
+    // Weather icons
+    weatherLayerRef.current?.restyle(basemap)
+  }, [basemap])
+
   function selectTrip(index: number) {
     setSelectedTripIndex(index)
     selectedTripIndexRef.current = index
@@ -286,6 +336,25 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
     const mobile = window.innerWidth < 768
     const bottomPad = mobile ? Math.round(window.innerHeight * 0.5) : 60
     mapRef.current.fitBounds(L.latLngBounds(latLngs), { paddingTopLeft: [60, 60], paddingBottomRight: [60, bottomPad], maxZoom: 12 })
+
+    // Remove previous break markers
+    const Lmap = (window as any)._L
+    breakMarkersRef.current.forEach(m => m.remove())
+    breakMarkersRef.current = []
+
+    // Add break markers for selected trip
+    const selectedT = trips[index]
+    if (Lmap && mapRef.current && selectedT.breaks) {
+      selectedT.breaks.forEach((b) => {
+        const icon = Lmap.divIcon({
+          html: `<div style="background:rgba(15,23,42,0.9);border:2px solid #f59e0b;border-radius:6px;padding:2px 6px;font-size:11px;font-weight:600;color:#f59e0b;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.4)">${b.duration_min} min</div>`,
+          className: '',
+          iconAnchor: [20, 12],
+        })
+        const marker = Lmap.marker([b.lat, b.lng], { icon }).addTo(mapRef.current!)
+        breakMarkersRef.current.push(marker)
+      })
+    }
 
     // Highlight selected, dim others
     polylinesRef.current.forEach((pl, i) => {
@@ -307,6 +376,8 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
     setSelectedTripIndex(null)
     setHoveredDistance(null)
     selectedTripIndexRef.current = null
+    breakMarkersRef.current.forEach(m => m.remove())
+    breakMarkersRef.current = []
     // Hide marker
     if (hoverMarkerRef.current) hoverMarkerRef.current.setStyle({ opacity: 0, fillOpacity: 0 })
     // Restore all polylines
@@ -337,7 +408,7 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
 
       const map = L.map(containerRef.current, { zoomControl: false }).setView([46.2276, 2.2137], 6)
 
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      tileLayerRef.current = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
         subdomains: 'abcd',
         maxZoom: 20,
@@ -394,20 +465,19 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
       for (const route of (plannedRoutes ?? [])) {
         if (route.coordinates.length < 2) continue
         const latLngs = route.coordinates.map(([lng, lat]) => [lat, lng] as [number, number])
-        // Glow
-        L.polyline(latLngs, {
+        const plannedGlow = L.polyline(latLngs, {
           color: route.color,
           weight: 10,
           opacity: 0.08,
           dashArray: undefined,
         }).addTo(map)
-        // Dashed line
-        L.polyline(latLngs, {
+        const plannedLine = L.polyline(latLngs, {
           color: route.color,
           weight: 2,
           opacity: 0.7,
           dashArray: '8, 10',
         }).addTo(map)
+        plannedLinesRef.current.push({ glow: plannedGlow, line: plannedLine })
       }
 
       // Camera markers
@@ -459,6 +529,8 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
       cancelled = true
       weatherLayerRef.current?.remove()
       weatherLayerRef.current = null
+      breakMarkersRef.current.forEach(m => m.remove())
+      breakMarkersRef.current = []
       mapRef.current?.remove()
       mapRef.current = null
       polylinesRef.current = []
@@ -543,6 +615,28 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
               <div className="px-4 py-3 bg-slate-900/50">
                 <div className="text-lg font-bold text-white">{selectedTrip.country ?? '—'}</div>
                 <div className="text-xs text-slate-500 mt-0.5 truncate">{t('country') || 'pays'}</div>
+              </div>
+            </div>
+
+            {/* Stats row 2: max speed, max altitude, breaks */}
+            <div className="grid grid-cols-3 gap-px bg-slate-700/30 border-b border-slate-700/50">
+              <div className="px-4 py-3 bg-slate-900/50">
+                <div className="text-lg font-bold text-white">
+                  {selectedTrip.max_speed_ms != null ? `${Math.round(selectedTrip.max_speed_ms * 3.6)}` : '—'}
+                </div>
+                <div className="text-xs text-slate-500 mt-0.5">km/h max</div>
+              </div>
+              <div className="px-4 py-3 bg-slate-900/50">
+                <div className="text-lg font-bold text-white">
+                  {selectedTrip.elev_high != null ? `${Math.round(selectedTrip.elev_high)}` : '—'}
+                </div>
+                <div className="text-xs text-slate-500 mt-0.5">m alt. max</div>
+              </div>
+              <div className="px-4 py-3 bg-slate-900/50">
+                <div className="text-lg font-bold text-white">
+                  {selectedTrip.breaks != null ? selectedTrip.breaks.length : '—'}
+                </div>
+                <div className="text-xs text-slate-500 mt-0.5">pauses</div>
               </div>
             </div>
 
@@ -655,21 +749,36 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
         )}
       </div>}
 
-      {/* Météo toggle button */}
+      {/* Top-left map controls */}
       {externalHover === undefined && (
-        <button
-          onClick={() => setShowWeather((v) => !v)}
-          className="absolute top-4 left-4 z-[9999] flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all"
-          style={{
-            background: showWeather ? 'rgba(34,211,238,0.2)' : 'rgba(15,23,42,0.85)',
-            border: showWeather ? '1px solid rgba(34,211,238,0.6)' : '1px solid rgba(51,65,85,0.8)',
-            backdropFilter: 'blur(8px)',
-            color: showWeather ? '#22d3ee' : '#94a3b8',
-          }}
-        >
-          <span style={{ fontSize: 16 }}>⛅</span>
-          Météo
-        </button>
+        <div className="absolute top-4 left-4 z-[9999] flex items-center gap-2">
+          <button
+            onClick={() => setShowWeather((v) => !v)}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all"
+            style={{
+              background: showWeather ? 'rgba(34,211,238,0.2)' : 'rgba(15,23,42,0.85)',
+              border: showWeather ? '1px solid rgba(34,211,238,0.6)' : '1px solid rgba(51,65,85,0.8)',
+              backdropFilter: 'blur(8px)',
+              color: showWeather ? '#22d3ee' : '#94a3b8',
+            }}
+          >
+            <span style={{ fontSize: 16 }}>⛅</span>
+            Météo
+          </button>
+          <button
+            onClick={() => setBasemap((v) => v === 'dark' ? 'topo' : 'dark')}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all"
+            style={{
+              background: basemap === 'topo' ? 'rgba(251,191,36,0.2)' : 'rgba(15,23,42,0.85)',
+              border: basemap === 'topo' ? '1px solid rgba(251,191,36,0.6)' : '1px solid rgba(51,65,85,0.8)',
+              backdropFilter: 'blur(8px)',
+              color: basemap === 'topo' ? '#fbbf24' : '#94a3b8',
+            }}
+          >
+            <span style={{ fontSize: 16 }}>🗻</span>
+            Topo
+          </button>
+        </div>
       )}
 
       {selectedPhoto && (

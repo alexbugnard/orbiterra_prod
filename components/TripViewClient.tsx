@@ -25,6 +25,9 @@ interface Trip {
   elevation: [number, number][] | null
   start_lat: number | null
   start_lng: number | null
+  max_speed_ms: number | null
+  elev_high: number | null
+  breaks: { lat: number; lng: number; duration_min: number; distance_m: number }[] | null
 }
 
 interface TripViewClientProps {

@@ -26,6 +26,10 @@ interface Trip {
   journal_en: string | null
   coordinates: [number, number][]
   elevation: [number, number][] | null
+  country?: string | null
+  max_speed_ms: number | null
+  elev_high: number | null
+  breaks: { lat: number; lng: number; duration_min: number; distance_m: number }[] | null
 }
 
 interface Waypoint {

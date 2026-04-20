@@ -40,6 +40,9 @@ export default async function TripPage({ params }: { params: Promise<{ id: strin
     elevation: (trip.elevation ?? null) as [number, number][] | null,
     start_lat: null,
     start_lng: null,
+    max_speed_ms: null,
+    elev_high: null,
+    breaks: null,
   }
 
   return (
