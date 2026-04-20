@@ -323,6 +323,49 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
     weatherLayerRef.current?.restyle(basemap)
   }, [basemap])
 
+  function calloutIcon(L: any, label: string, color: string, lineHeight: number, side: 'left' | 'right' | 'center') {
+    const offset = side === 'left' ? -18 : side === 'right' ? 18 : 0
+    const labelW = 90
+    const anchorX = labelW / 2 - offset
+    return L.divIcon({
+      html: `<div style="position:relative;width:${labelW}px;pointer-events:none;transform:translateX(${offset}px)">
+        <div style="background:rgba(10,15,28,0.95);border:2px solid ${color};border-radius:8px;padding:3px 8px;font-size:11px;font-weight:700;color:${color};white-space:nowrap;text-align:center;box-shadow:0 3px 10px rgba(0,0,0,0.6);letter-spacing:0.3px">${label}</div>
+        <div style="width:2px;height:${lineHeight}px;background:${color};margin:0 auto;opacity:0.7"></div>
+        <div style="width:9px;height:9px;border-radius:50%;background:${color};border:2px solid white;margin:0 auto;box-shadow:0 0 0 3px ${color}44"></div>
+      </div>`,
+      className: '',
+      iconAnchor: [anchorX, 26 + lineHeight],
+    })
+  }
+
+  function addTripMarkers(trip: typeof trips[number], L: any, map: LeafletMap) {
+    if (!L || !map) return
+
+    if (trip.max_speed_lat != null && trip.max_speed_lng != null) {
+      const spd = trip.max_speed_ms != null ? `⚡ ${Math.round(trip.max_speed_ms * 3.6)} km/h` : '⚡'
+      breakMarkersRef.current.push(
+        L.marker([trip.max_speed_lat, trip.max_speed_lng], { icon: calloutIcon(L, spd, '#3b82f6', 28, 'right') }).addTo(map)
+      )
+    }
+
+    if (trip.elev_high_lat != null && trip.elev_high_lng != null) {
+      const alt = trip.elev_high != null ? `▲ ${Math.round(trip.elev_high)} m` : '▲'
+      breakMarkersRef.current.push(
+        L.marker([trip.elev_high_lat, trip.elev_high_lng], { icon: calloutIcon(L, alt, '#10b981', 36, 'left') }).addTo(map)
+      )
+    }
+
+    if (trip.breaks) {
+      trip.breaks.forEach((b, i) => {
+        const side = i % 2 === 0 ? 'right' : 'left'
+        const lineH = 20 + (i % 3) * 10
+        breakMarkersRef.current.push(
+          L.marker([b.lat, b.lng], { icon: calloutIcon(L, `⏸ ${b.duration_min} min`, '#f59e0b', lineH, side) }).addTo(map)
+        )
+      })
+    }
+  }
+
   function selectTrip(index: number) {
     setSelectedTripIndex(index)
     selectedTripIndexRef.current = index
@@ -346,41 +389,7 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
     breakMarkersRef.current.forEach(m => m.remove())
     breakMarkersRef.current = []
 
-    // Add break markers for selected trip
-    const selectedT = trips[index]
-    if (Lmap && mapRef.current && selectedT.breaks) {
-      selectedT.breaks.forEach((b) => {
-        const icon = Lmap.divIcon({
-          html: `<div style="background:rgba(15,23,42,0.9);border:2px solid #f59e0b;border-radius:6px;padding:2px 6px;font-size:11px;font-weight:600;color:#f59e0b;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.4)">${b.duration_min} min</div>`,
-          className: '',
-          iconAnchor: [20, 12],
-        })
-        const marker = Lmap.marker([b.lat, b.lng], { icon }).addTo(mapRef.current!)
-        breakMarkersRef.current.push(marker)
-      })
-    }
-
-    // Peak markers: max speed ⚡ and max altitude ▲
-    if (Lmap && mapRef.current) {
-      if (selectedT.max_speed_lat != null && selectedT.max_speed_lng != null) {
-        const spd = selectedT.max_speed_ms != null ? `${Math.round(selectedT.max_speed_ms * 3.6)} km/h` : '⚡'
-        const icon = Lmap.divIcon({
-          html: `<div style="background:rgba(15,23,42,0.9);border:2px solid #3b82f6;border-radius:6px;padding:2px 6px;font-size:11px;font-weight:600;color:#3b82f6;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.4)">⚡ ${spd}</div>`,
-          className: '',
-          iconAnchor: [28, 12],
-        })
-        breakMarkersRef.current.push(Lmap.marker([selectedT.max_speed_lat, selectedT.max_speed_lng], { icon }).addTo(mapRef.current!))
-      }
-      if (selectedT.elev_high_lat != null && selectedT.elev_high_lng != null) {
-        const alt = selectedT.elev_high != null ? `${Math.round(selectedT.elev_high)} m` : '▲'
-        const icon = Lmap.divIcon({
-          html: `<div style="background:rgba(15,23,42,0.9);border:2px solid #10b981;border-radius:6px;padding:2px 6px;font-size:11px;font-weight:600;color:#10b981;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.4)">▲ ${alt}</div>`,
-          className: '',
-          iconAnchor: [28, 12],
-        })
-        breakMarkersRef.current.push(Lmap.marker([selectedT.elev_high_lat, selectedT.elev_high_lng], { icon }).addTo(mapRef.current!))
-      }
-    }
+    addTripMarkers(trips[index], Lmap, mapRef.current!)
 
     // Highlight selected, dim others
     polylinesRef.current.forEach((pl, i) => {
@@ -548,6 +557,10 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
         map.fitBounds(L.latLngBounds(allLatLngs), { padding: [40, 40] })
       }
 
+      // On trip detail page, auto-show markers for the single trip
+      if (externalHover !== undefined && trips.length === 1) {
+        addTripMarkers(trips[0], L, map)
+      }
     }
 
     initMap()
