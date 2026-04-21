@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslations } from 'next-intl'
+import { BikeSetup } from './BikeSetup'
 
 interface Video {
   id: string
@@ -18,6 +19,7 @@ export function AboutModal({ onClose }: AboutModalProps) {
   const t = useTranslations('about')
   const [videos, setVideos] = useState<Video[]>([])
   const [activeVideo, setActiveVideo] = useState<string | null>(null)
+  const [tab, setTab] = useState<'about' | 'setup'>('about')
 
   // Load videos
   useEffect(() => {
@@ -58,7 +60,22 @@ export function AboutModal({ onClose }: AboutModalProps) {
       >
         {/* Header */}
         <div className="flex items-center justify-between px-8 py-5 border-b border-slate-700/50 flex-shrink-0">
-          <h2 className="text-xl font-bold text-white">{t('title')}</h2>
+          <div className="flex items-center gap-1 bg-slate-800/60 rounded-xl p-1">
+            {(['about', 'setup'] as const).map((t2) => (
+              <button
+                key={t2}
+                onClick={() => setTab(t2)}
+                className="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                style={{
+                  background: tab === t2 ? 'rgba(249,115,22,0.15)' : 'transparent',
+                  color: tab === t2 ? '#f97316' : '#94a3b8',
+                  border: tab === t2 ? '1px solid rgba(249,115,22,0.3)' : '1px solid transparent',
+                }}
+              >
+                {t2 === 'about' ? t('title') : '🚲 Setup'}
+              </button>
+            ))}
+          </div>
           <button
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
@@ -69,7 +86,15 @@ export function AboutModal({ onClose }: AboutModalProps) {
           </button>
         </div>
 
-        {/* Scrollable content */}
+        {/* Setup tab */}
+        {tab === 'setup' && (
+          <div className="flex-1 overflow-y-auto px-8 py-8">
+            <BikeSetup />
+          </div>
+        )}
+
+        {/* About tab content */}
+        {tab === 'about' && (
         <div className="flex-1 overflow-y-auto px-8 py-8 space-y-10">
 
           {/* Goal */}
@@ -169,22 +194,36 @@ export function AboutModal({ onClose }: AboutModalProps) {
             <p className="text-slate-300 leading-relaxed mb-6">{t('sponsorsText')}</p>
 
             {/* Sponsor logos */}
-            <div className="flex flex-wrap gap-4">
-              <a
-                href="https://rab.equipment"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="h-16 px-6 rounded-xl border border-slate-700 bg-white flex items-center justify-center hover:border-slate-500 transition-colors"
-              >
-                <img
-                  src="/sponsors/rab-logo.svg"
-                  alt="RAB Equipment"
-                  className="h-8 w-auto"
-                />
-              </a>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {[
+                { name: 'RAB', sub: 'Equipment', url: 'https://rab.equipment', logo: '/sponsors/rab-logo.png' },
+                { name: 'JULBO', sub: 'Eyewear', url: 'https://www.julbo.com', logo: '/sponsors/julbo-logo.svg' },
+                { name: 'SWIZA', sub: 'Couteaux', url: 'https://www.swiza.com', logo: '/sponsors/swiza-logo.svg' },
+                { name: 'GripGrab', sub: 'Habits vélo', url: 'https://www.gripgrab.com', logo: '/sponsors/gripgrab-logo.png' },
+                { name: 'ICON OUTDOOR', sub: '', url: 'https://icon-outdoor.ch/', logo: '/sponsors/icon-outdoor-logo.webp' },
+                { name: 'bücher&walt', sub: '', url: 'https://www.bucher-walt.ch', logo: '/sponsors/bucherwalt-logo.png' },
+              ].map((s) => (
+                <a
+                  key={s.name}
+                  href={s.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="h-16 px-4 rounded-xl border border-slate-700 bg-slate-800/60 flex items-center justify-center hover:border-orange-500/50 hover:bg-slate-800 transition-colors"
+                >
+                  {s.logo ? (
+                    <img src={s.logo} alt={s.name} className="h-8 w-auto" />
+                  ) : (
+                    <div className="text-center">
+                      <div className="text-white font-bold text-sm leading-tight">{s.name}</div>
+                      {s.sub && <div className="text-slate-500 text-xs mt-0.5">{s.sub}</div>}
+                    </div>
+                  )}
+                </a>
+              ))}
             </div>
           </section>
         </div>
+        )}
 
         {/* Footer */}
         <div className="px-4 py-4 border-t border-slate-700/50 flex-shrink-0 flex flex-wrap items-center justify-between gap-3 md:px-8">

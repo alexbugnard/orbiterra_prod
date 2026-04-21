@@ -6,7 +6,9 @@
   "landing": {
     "cta": "View the journey",
     "kmRidden": "km ridden",
-    "ridesTracked": "rides tracked"
+    "ridesTracked": "rides tracked",
+    "routeProgress": "Route progress",
+    "remaining": "remaining"
   },
   "map": {
     "rides": "Rides",

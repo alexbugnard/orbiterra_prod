@@ -8,6 +8,7 @@ import { ElevationProfile } from './ElevationProfile'
 import { useIsMobile } from '@/lib/useIsMobile'
 import { computeElevationGain } from '@/lib/strava'
 import { WeatherLayer } from './WeatherLayer'
+import { SponsorBanner } from './SponsorBanner'
 
 interface Trip {
   id: string
@@ -649,19 +650,15 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
             cPt.y + Math.sin(angle) * radius * 0.65,
           ]))
 
-          // Add title label for waypoint (camera) markers — no connecting line
+          // Highlight waypoint (camera) markers when spread — no label, just glow
           if ((m as any)._spreadLabel !== undefined) {
             const L = (window as any)._L
             if (!L) return
-            const label = (m as any)._spreadLabel
-            const w = 100
             m.setIcon(L.divIcon({
-              html: `<div style="display:flex;flex-direction:column;align-items:center;width:${w}px">
-                <div style="background:rgba(10,15,28,0.92);border:1px solid #94a3b8;color:#e2e8f0;font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;white-space:nowrap;max-width:${w}px;overflow:hidden;text-overflow:ellipsis;box-shadow:0 2px 6px rgba(0,0,0,0.4);margin-bottom:4px">${label || '📷'}</div>
-                <div style="width:32px;height:32px;background:#1e293b;border:2px solid #f97316;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 0 0 4px rgba(249,115,22,0.15);cursor:pointer">📷</div>
-              </div>`,
+              html: `<div style="width:32px;height:32px;background:#1e293b;border:2px solid #f97316;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 0 0 6px rgba(249,115,22,0.25);cursor:pointer">📷</div>`,
               className: '',
-              iconAnchor: [w / 2, 40],
+              iconSize: [32, 32],
+              iconAnchor: [16, 16],
             }))
           }
         })
@@ -697,7 +694,8 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
     // centres in the visible area above the sheet
     const mobile = window.innerWidth < 768
     const bottomPad = mobile ? Math.round(window.innerHeight * 0.5) : 60
-    mapRef.current.fitBounds(L.latLngBounds(latLngs), { paddingTopLeft: [60, 60], paddingBottomRight: [60, bottomPad], maxZoom: 12 })
+    const rightPad = mobile ? 60 : 416 + 32
+    mapRef.current.fitBounds(L.latLngBounds(latLngs), { paddingTopLeft: [60, 60], paddingBottomRight: [rightPad, bottomPad], maxZoom: 12 })
 
     // Remove previous break markers
     const Lmap = (window as any)._L
@@ -765,7 +763,6 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
         maxZoom: 20,
       }).addTo(map)
 
-      L.control.zoom({ position: 'bottomright' }).addTo(map)
       mapRef.current = map
 
       const glowLines: Polyline[] = []
@@ -980,7 +977,7 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
       {externalHover === undefined && <div
         className={isMobile
           ? 'absolute left-0 right-0 bottom-0 z-[1000] flex flex-col rounded-t-2xl overflow-hidden transition-all duration-300'
-          : 'absolute top-4 right-4 bottom-4 z-[1000] w-80 flex flex-col rounded-2xl overflow-hidden transition-all duration-300'
+          : 'absolute top-4 right-4 bottom-4 z-[1000] w-[416px] flex flex-col rounded-2xl overflow-hidden transition-all duration-300'
         }
         style={{
           background: 'rgba(15,23,42,0.95)',
@@ -1196,7 +1193,7 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
             }}
           >
             <span style={{ fontSize: 16 }}>⛅</span>
-            Météo
+            <span className="hidden md:inline">Météo</span>
           </button>
           <button
             onClick={() => setBasemap((v) => v === 'dark' ? 'topo' : 'dark')}
@@ -1209,7 +1206,7 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
             }}
           >
             <span style={{ fontSize: 16 }}>🗻</span>
-            Topo
+            <span className="hidden md:inline">Topo</span>
           </button>
         </div>
       )}
@@ -1324,6 +1321,10 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
         </div>
       )}
 
+      <SponsorBanner
+        panelOpen={!isMobile && (selectedTrip !== null || selectedRouteIndex !== null)}
+        hidden={isMobile && selectedTrip !== null}
+      />
 
     </div>
   )

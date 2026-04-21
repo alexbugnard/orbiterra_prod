@@ -6,7 +6,9 @@
   "landing": {
     "cta": "Voir le voyage",
     "kmRidden": "km parcourus",
-    "ridesTracked": "étapes enregistrées"
+    "ridesTracked": "étapes enregistrées",
+    "routeProgress": "Progression du parcours",
+    "remaining": "restants"
   },
   "map": {
     "rides": "Étapes",
