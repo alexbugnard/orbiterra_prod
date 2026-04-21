@@ -4,7 +4,9 @@
     "about": "À propos"
   },
   "landing": {
-    "cta": "Voir le voyage"
+    "cta": "Voir le voyage",
+    "kmRidden": "km parcourus",
+    "ridesTracked": "étapes enregistrées"
   },
   "map": {
     "rides": "Étapes",
@@ -22,18 +24,29 @@
     "previous": "Précédent",
     "next": "Suivant",
     "loading": "Chargement de la carte…",
-    "videosTitle": "Vidéos du jour"
+    "videosTitle": "Vidéos du jour",
+    "mGain": "m dénivelé+"
   },
   "trip": {
-    "backToMap": "← Retour à la carte"
+    "backToMap": "Retour à la carte",
+    "mGain": "m dénivelé+"
   },
   "about": {
     "title": "À propos",
     "close": "Fermer",
     "goalTitle": "L'objectif",
-    "goalText": "Relier Deadhorse (Alaska) à Ushuaia (Argentine) à vélo — environ 30 000 km à travers deux continents, des glaces arctiques aux vents de Patagonie. Un voyage en autonomie, au rythme des routes et des rencontres.",
+    "goalText": "Relier Deadhorse (Alaska) à Ushuaia (Argentine) à vélo — environ 30 000 km à travers deux continents, des glaces arctiques aux vents de Patagonie. Un départ programmé pour l'été 2025, en autonomie complète, au rythme des routes, des cols et des rencontres.",
     "vincentTitle": "Qui est Vincent ?",
-    "vincentText": "Vincent est un cycliste passionné et aventurier dans l'âme. Après des années à rêver de la grande traversée des Amériques, il a tout quitté pour enfourcher son vélo et prendre la route. Toujours le sourire aux lèvres, une tente sur le porte-bagages et une curiosité sans limites pour les cultures et les paysages qu'il traverse.",
+    "vincentText": "Vincent Morisetti est un cycliste suisse passionné d'aventure et de grands espaces. Après avoir enchaîné les sorties dans les Alpes et rêvé pendant des années d'un grand voyage, il a tout planifié pour traverser les deux Amériques à vélo, du cercle arctique à la Terre de Feu. Sportif dans l'âme, curieux de chaque culture qu'il traverse, il documente son aventure en vidéo et sur Instagram pour partager chaque étape avec sa communauté.",
+    "statsLabel": "Le voyage en chiffres",
+    "stat1Label": "Distance totale prévue",
+    "stat1Value": "~30 000 km",
+    "stat2Label": "Pays traversés",
+    "stat2Value": "14",
+    "stat3Label": "Départ",
+    "stat3Value": "Deadhorse, Alaska",
+    "stat4Label": "Arrivée",
+    "stat4Value": "Ushuaia, Argentine",
     "sponsorsTitle": "Sponsors & soutiens",
     "sponsorsText": "Ce voyage est rendu possible grâce au soutien de nos partenaires. Vous souhaitez soutenir l'aventure ? Contactez-nous.",
     "videosTitle": "Vidéos",

@@ -41,6 +41,7 @@ interface PlannedRoute {
   name: string
   coordinates: [number, number][]
   color: string
+  elevation: [number, number][] | null
 }
 
 interface Video {
@@ -171,6 +172,83 @@ function closestDistOnPath(
   return bestCum
 }
 
+function computeRiddenMask(planCoords: [number, number][], trips: { coordinates: [number, number][] }[]): boolean[] {
+  const CELL = 0.005
+  const riddenCells = new Set<string>()
+  for (const trip of trips) {
+    for (const [lng, lat] of trip.coordinates) {
+      riddenCells.add(`${Math.floor(lat / CELL)},${Math.floor(lng / CELL)}`)
+    }
+  }
+  // Smooth mask with window=3 to avoid tiny isolated ridden blips
+  const raw = planCoords.map(([lng, lat]) => {
+    const cLat = Math.floor(lat / CELL)
+    const cLng = Math.floor(lng / CELL)
+    for (let dLat = -1; dLat <= 1; dLat++) {
+      for (let dLng = -1; dLng <= 1; dLng++) {
+        if (riddenCells.has(`${cLat + dLat},${cLng + dLng}`)) return true
+      }
+    }
+    return false
+  })
+  // Smooth: if majority of window=5 neighbors are true, mark true
+  const W = 5
+  return raw.map((_, i) => {
+    let count = 0
+    for (let j = Math.max(0, i - W); j <= Math.min(raw.length - 1, i + W); j++) {
+      if (raw[j]) count++
+    }
+    return count > W
+  })
+}
+
+function splitRiddenSegments(
+  coords: [number, number][],
+  mask: boolean[]
+): { coords: [number, number][]; ridden: boolean }[] {
+  if (coords.length === 0) return []
+  const segs: { coords: [number, number][]; ridden: boolean }[] = []
+  let cur = mask[0]
+  let buf: [number, number][] = [coords[0]]
+  for (let i = 1; i < coords.length; i++) {
+    if (mask[i] === cur) {
+      buf.push(coords[i])
+    } else {
+      segs.push({ coords: buf, ridden: cur })
+      cur = mask[i]
+      buf = [coords[i - 1], coords[i]]
+    }
+  }
+  segs.push({ coords: buf, ridden: cur })
+  return segs
+}
+
+function computeRouteDistances(coords: [number, number][]): { ridden: number; total: number } {
+  // Returns total distance (all) — ridden distance computed from mask elsewhere
+  let total = 0
+  for (let i = 1; i < coords.length; i++) {
+    const [lng1, lat1] = coords[i - 1]
+    const [lng2, lat2] = coords[i]
+    total += haversineM(lat1, lng1, lat2, lng2)
+  }
+  return { ridden: 0, total }
+}
+
+function computeRiddenDistM(coords: [number, number][], mask: boolean[]): number {
+  let lastIdx = -1
+  for (let i = 0; i < mask.length; i++) {
+    if (mask[i]) lastIdx = i
+  }
+  if (lastIdx < 0) return 0
+  let d = 0
+  for (let i = 1; i <= lastIdx; i++) {
+    const [lng1, lat1] = coords[i - 1]
+    const [lng2, lat2] = coords[i]
+    d += haversineM(lat1, lng1, lat2, lng2)
+  }
+  return d
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 
 export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalHover, stats }: MapProps) {
@@ -183,21 +261,41 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
   const hoverMarkerRef = useRef<any>(null)
   const cumDistsRef = useRef<number[] | null>(null)
   const weatherLayerRef = useRef<WeatherLayer | null>(null)
+  const waypointMarkersRef = useRef<any[]>([])
   const [showWeather, setShowWeather] = useState(false)
   const [basemap, setBasemap] = useState<'dark' | 'topo'>('dark')
+  const [aboutOpen, setAboutOpen] = useState(false)
+  const [selectedRouteIndex, setSelectedRouteIndex] = useState<number | null>(null)
+  const [routeElevation, setRouteElevation] = useState<[number, number][] | null>(null)
+  const [routeElevationLoading, setRouteElevationLoading] = useState(false)
+  const routeElevationCache = useRef<Record<string, [number, number][]>>({})
+
+  useEffect(() => {
+    function handler(e: Event) {
+      setAboutOpen((e as CustomEvent).detail.open)
+    }
+    window.addEventListener('aboutmodal', handler)
+    return () => window.removeEventListener('aboutmodal', handler)
+  }, [])
   const tileLayerRef = useRef<any>(null)
-  const plannedLinesRef = useRef<any[]>([])
+  const plannedLinesRef = useRef<{ segLines: { line: any; ridden: boolean }[]; routeColor: string }[]>([])
   const breakMarkersRef = useRef<any[]>([])
-  const [selectedPhoto, setSelectedPhoto] = useState<Waypoint | null>(null)
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null)
   const [selectedTripIndex, setSelectedTripIndex] = useState<number | null>(null)
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null)
   const [hoveredDistance, setHoveredDistance] = useState<number | null>(null)
+  const [hoveredRouteDistance, setHoveredRouteDistance] = useState<number | null>(null)
+  const hoverRouteMarkerRef = useRef<any>(null)
+  const selectedRouteIndexRef = useRef<number | null>(null)
+  const routeCumDistsRef = useRef<number[] | null>(null)
 
-  // Keep setter in a ref so Leaflet closures (initMap) can access current value
+  // Keep setters in refs so Leaflet closures (initMap) can access current values
   const setHoveredDistanceRef = useRef(setHoveredDistance)
+  const setHoveredRouteDistanceRef = useRef(setHoveredRouteDistance)
   const externalHoverRef = useRef(externalHover)
   useEffect(() => {
     setHoveredDistanceRef.current = setHoveredDistance
+    setHoveredRouteDistanceRef.current = setHoveredRouteDistance
     externalHoverRef.current = externalHover
   })
 
@@ -207,6 +305,25 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
     : selectedTripIndex
 
   const selectedTrip = effectiveTripIndex !== null ? trips[effectiveTripIndex] : null
+
+  const routePanelData = useMemo(() => {
+    if (selectedRouteIndex === null) return null
+    const route = plannedRoutes[selectedRouteIndex]
+    if (!route) return null
+    const mask = computeRiddenMask(route.coordinates, trips)
+    const { total } = computeRouteDistances(route.coordinates)
+    const ridden = computeRiddenDistM(route.coordinates, mask)
+    const totalKm = Math.round(total / 1000)
+    const riddenKm = Math.round(ridden / 1000)
+    const pct = total > 0 ? Math.round((ridden / total) * 100) : 0
+    // Compute riddenUpToM scaled to the elevation profile distances
+    let riddenUpToM: number | undefined
+    if (routeElevation && routeElevation.length > 0 && total > 0) {
+      const fraction = ridden / total
+      riddenUpToM = fraction * routeElevation[routeElevation.length - 1][0]
+    }
+    return { route, totalKm, riddenKm, remainKm: totalKm - riddenKm, pct, riddenUpToM }
+  }, [selectedRouteIndex, plannedRoutes, trips, routeElevation])
 
   // Build cumulative distances whenever selected trip changes
   const cumDists = useMemo(() => {
@@ -264,6 +381,31 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hoveredDistance, externalHover?.distance, selectedTripIndex, trips])
 
+  // Effect: show/hide cyan circle marker on planned route based on hoveredRouteDistance
+  useEffect(() => {
+    const L = (window as any)._L
+    if (!L || !mapRef.current) return
+    if (hoveredRouteDistance == null || selectedRouteIndex === null) {
+      if (hoverRouteMarkerRef.current) {
+        hoverRouteMarkerRef.current.setStyle({ opacity: 0, fillOpacity: 0 })
+      }
+      return
+    }
+    const route = plannedRoutes[selectedRouteIndex]
+    if (!route || !routeCumDistsRef.current) return
+    const latLng = interpolateOnPath(route.coordinates, routeCumDistsRef.current, hoveredRouteDistance)
+    if (!latLng) return
+    if (!hoverRouteMarkerRef.current) {
+      hoverRouteMarkerRef.current = L.circleMarker(latLng, {
+        radius: 6, color: '#22d3ee', fillColor: '#22d3ee', fillOpacity: 0.9, opacity: 1, weight: 2,
+      }).addTo(mapRef.current)
+    } else {
+      hoverRouteMarkerRef.current.setLatLng(latLng)
+      hoverRouteMarkerRef.current.setStyle({ opacity: 1, fillOpacity: 0.9 })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hoveredRouteDistance, selectedRouteIndex])
+
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
@@ -314,54 +456,227 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
     if (hoverMarkerRef.current) hoverMarkerRef.current.setStyle({ color: tripColor, fillColor: tripColor })
 
     // Planned route lines
-    plannedLinesRef.current.forEach(({ glow, line }) => {
-      glow.setStyle({ color: plannedColor })
-      line.setStyle({ color: plannedColor })
+    plannedLinesRef.current.forEach(({ segLines, routeColor }) => {
+      const unriddenColor = basemap === 'topo' ? '#1d4ed8' : routeColor
+      const riddenLineColor = basemap === 'topo' ? '#dc2626' : '#f97316'
+      segLines.forEach(({ line, ridden }) => {
+        line.setStyle({ color: ridden ? riddenLineColor : unriddenColor })
+      })
     })
 
     // Weather icons
     weatherLayerRef.current?.restyle(basemap)
   }, [basemap])
 
-  function calloutIcon(L: any, label: string, color: string, lineHeight: number, side: 'left' | 'right' | 'center') {
-    const offset = side === 'left' ? -18 : side === 'right' ? 18 : 0
-    const labelW = 90
-    const anchorX = labelW / 2 - offset
+  function endpointIcon(L: any, type: 'start' | 'end', color: string) {
+    const size = 28
+    const svgIcon = type === 'start'
+      ? `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="white"><polygon points="5,3 19,12 5,21"/></svg>`
+      : `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>`
     return L.divIcon({
-      html: `<div style="position:relative;width:${labelW}px;pointer-events:none;transform:translateX(${offset}px)">
-        <div style="background:rgba(10,15,28,0.95);border:2px solid ${color};border-radius:8px;padding:3px 8px;font-size:11px;font-weight:700;color:${color};white-space:nowrap;text-align:center;box-shadow:0 3px 10px rgba(0,0,0,0.6);letter-spacing:0.3px">${label}</div>
-        <div style="width:2px;height:${lineHeight}px;background:${color};margin:0 auto;opacity:0.7"></div>
-        <div style="width:9px;height:9px;border-radius:50%;background:${color};border:2px solid white;margin:0 auto;box-shadow:0 0 0 3px ${color}44"></div>
+      html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 2px 10px rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;pointer-events:none">${svgIcon}</div>`,
+      className: '',
+      iconAnchor: [size / 2, size / 2],
+    })
+  }
+
+  function calloutIcon(L: any, label: string, color: string, lineHeight: number, side: 'left' | 'right' | 'center') {
+    // The dot must sit exactly at the geographic coordinate.
+    // iconAnchor is always the dot center: [dotCenterX, dotCenterY].
+    // The label is shifted left/right via absolute positioning so the dot stays pinned.
+    const dotSize = 9
+    const labelW = 88
+    const iconWidth = labelW + 40  // extra room for side shift without clipping
+    const dotCenterX = iconWidth / 2
+    const labelHeight = 26  // approx rendered height of label box
+    const dotCenterY = labelHeight + lineHeight + dotSize / 2
+
+    const labelShift = side === 'right' ? -20 : side === 'left' ? 20 : 0
+    const labelLeft = dotCenterX - labelW / 2 + labelShift
+
+    return L.divIcon({
+      html: `<div style="position:relative;width:${iconWidth}px;height:${dotCenterY + dotSize}px;pointer-events:none">
+        <div style="position:absolute;left:${labelLeft}px;top:0;width:${labelW}px;background:rgba(10,15,28,0.95);border:2px solid ${color};border-radius:8px;padding:3px 8px;font-size:11px;font-weight:700;color:${color};white-space:nowrap;text-align:center;box-shadow:0 3px 10px rgba(0,0,0,0.6);letter-spacing:0.3px">${label}</div>
+        <div style="position:absolute;left:${dotCenterX - 1}px;top:${labelHeight}px;width:2px;height:${lineHeight}px;background:${color};opacity:0.7"></div>
+        <div style="position:absolute;left:${dotCenterX - dotSize / 2}px;top:${labelHeight + lineHeight}px;width:${dotSize}px;height:${dotSize}px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 0 0 3px ${color}44"></div>
       </div>`,
       className: '',
-      iconAnchor: [anchorX, 26 + lineHeight],
+      iconAnchor: [dotCenterX, dotCenterY],
     })
+  }
+
+  function snapToTrack(coords: [number, number][], lat: number, lng: number): [number, number] {
+    let best: [number, number] = [lat, lng]
+    let bestDist = Infinity
+    const cosLat = Math.cos(lat * Math.PI / 180)
+    for (const [cLng, cLat] of coords) {
+      const dLat = cLat - lat
+      const dLng = (cLng - lng) * cosLat
+      const d = dLat * dLat + dLng * dLng
+      if (d < bestDist) { bestDist = d; best = [cLat, cLng] }
+    }
+    return best
   }
 
   function addTripMarkers(trip: typeof trips[number], L: any, map: LeafletMap) {
     if (!L || !map) return
+    const coords = trip.coordinates
+
+    // Returns the index of the nearest coordinate to lat/lng
+    function snapIdx(lat: number, lng: number): number {
+      let bestIdx = 0, bestDist = Infinity
+      const cosLat = Math.cos(lat * Math.PI / 180)
+      for (let i = 0; i < coords.length; i++) {
+        const [cLng, cLat] = coords[i]
+        const d = (cLat - lat) ** 2 + ((cLng - lng) * cosLat) ** 2
+        if (d < bestDist) { bestDist = d; bestIdx = i }
+      }
+      return bestIdx
+    }
+
+    // Collect all markers, sorted by track position
+    const pending: { lat: number; lng: number; label: string; color: string; lineH: number; side: 'left' | 'right' | 'center'; idx: number }[] = []
 
     if (trip.max_speed_lat != null && trip.max_speed_lng != null) {
-      const spd = trip.max_speed_ms != null ? `⚡ ${Math.round(trip.max_speed_ms * 3.6)} km/h` : '⚡'
-      breakMarkersRef.current.push(
-        L.marker([trip.max_speed_lat, trip.max_speed_lng], { icon: calloutIcon(L, spd, '#3b82f6', 28, 'right') }).addTo(map)
-      )
+      const spdVal = trip.max_speed_ms != null ? Math.round(trip.max_speed_ms * 3.6) : null
+      const speedoSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="display:inline-block;vertical-align:middle;margin-right:3px;margin-bottom:1px"><path d="M3.34 17a10 10 0 1 1 17.32 0"/><line x1="12" y1="12" x2="17" y2="7"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>`
+      const label = spdVal != null ? `${speedoSvg}${spdVal} km/h` : speedoSvg
+      pending.push({ lat: trip.max_speed_lat, lng: trip.max_speed_lng, label, color: '#3b82f6', lineH: 28, side: 'right', idx: snapIdx(trip.max_speed_lat, trip.max_speed_lng) })
     }
 
     if (trip.elev_high_lat != null && trip.elev_high_lng != null) {
-      const alt = trip.elev_high != null ? `▲ ${Math.round(trip.elev_high)} m` : '▲'
-      breakMarkersRef.current.push(
-        L.marker([trip.elev_high_lat, trip.elev_high_lng], { icon: calloutIcon(L, alt, '#10b981', 36, 'left') }).addTo(map)
-      )
+      const label = trip.elev_high != null ? `▲ ${Math.round(trip.elev_high)} m` : '▲'
+      pending.push({ lat: trip.elev_high_lat, lng: trip.elev_high_lng, label, color: '#10b981', lineH: 36, side: 'left', idx: snapIdx(trip.elev_high_lat, trip.elev_high_lng) })
     }
 
     if (trip.breaks) {
       trip.breaks.forEach((b, i) => {
-        const side = i % 2 === 0 ? 'right' : 'left'
-        const lineH = 20 + (i % 3) * 10
-        breakMarkersRef.current.push(
-          L.marker([b.lat, b.lng], { icon: calloutIcon(L, `⏸ ${b.duration_min} min`, '#f59e0b', lineH, side) }).addTo(map)
+        pending.push({ lat: b.lat, lng: b.lng, label: `⏸ ${b.duration_min} min`, color: '#f59e0b', lineH: 24, side: i % 2 === 0 ? 'right' : 'left', idx: snapIdx(b.lat, b.lng) })
+      })
+    }
+
+    // Sort by position along track then stagger overlapping markers
+    pending.sort((a, b) => a.idx - b.idx)
+    const overlapWindow = Math.max(4, Math.floor(coords.length / 60))
+    for (let i = 1; i < pending.length; i++) {
+      if (pending[i].idx - pending[i - 1].idx < overlapWindow) {
+        pending[i].lineH = pending[i - 1].lineH + 20
+        // Flip side to reduce label overlap
+        pending[i].side = pending[i - 1].side === 'left' ? 'right' : 'left'
+      }
+    }
+
+    const created: any[] = []
+    for (const m of pending) {
+      const [sLat, sLng] = snapToTrack(coords, m.lat, m.lng)
+      const marker = L.marker([sLat, sLng], { icon: calloutIcon(L, m.label, m.color, m.lineH, m.side) }).addTo(map)
+      breakMarkersRef.current.push(marker)
+      created.push(marker)
+    }
+
+    // Start / end markers
+    if (coords.length >= 2) {
+      const [startLng, startLat] = coords[0]
+      const [endLng, endLat] = coords[coords.length - 1]
+      const startM = L.marker([startLat, startLng], { icon: endpointIcon(L, 'start', '#22c55e') }).addTo(map)
+      const endM = L.marker([endLat, endLng], { icon: endpointIcon(L, 'end', '#ef4444') }).addTo(map)
+      breakMarkersRef.current.push(startM, endM)
+      created.push(startM, endM)
+    }
+
+    return created
+  }
+
+  function setupMarkerSpread(allMarkers: any[], map: LeafletMap) {
+    if (allMarkers.length < 2) return
+    const PIXEL_THRESHOLD = 48
+    const SPREAD_PX = 52
+
+    // Store original state once
+    allMarkers.forEach((m) => {
+      m._origLatLng = m.getLatLng()
+      m._origIcon = m.options.icon
+      m._isSpread = false
+    })
+
+    let mouseMoveCleanup: (() => void) | null = null
+
+    // Restore all spread markers (called on zoom change or mouse-leave)
+    function restoreAll() {
+      if (mouseMoveCleanup) { mouseMoveCleanup(); mouseMoveCleanup = null }
+      allMarkers.forEach((m) => {
+        if (!m._isSpread) return
+        m._isSpread = false
+        if (m._icon) m._icon.style.transition = 'transform 0.15s ease'
+        m.setLatLng(m._origLatLng)
+        if (m._origIcon) m.setIcon(m._origIcon)
+      })
+    }
+    map.on('zoomend', restoreAll)
+
+    for (const marker of allMarkers) {
+      marker.on('mouseover', () => {
+        if (marker._isSpread) return
+
+        // Detect overlap using original positions (stable across multiple spreads)
+        const hPt = (map as any).latLngToContainerPoint(marker._origLatLng)
+        const group: { marker: any; orig: any }[] = allMarkers
+          .filter((m) => {
+            const pt = (map as any).latLngToContainerPoint(m._origLatLng)
+            return Math.sqrt((pt.x - hPt.x) ** 2 + (pt.y - hPt.y) ** 2) < PIXEL_THRESHOLD
+          })
+          .map((m) => ({ marker: m, orig: m._origLatLng }))
+
+        if (group.length < 2) return
+
+        group.forEach(({ marker: m }) => { m._isSpread = true })
+
+        const n = group.length
+        const cPt = group.reduce(
+          (acc, { orig }) => {
+            const pt = (map as any).latLngToContainerPoint(orig)
+            return { x: acc.x + pt.x / n, y: acc.y + pt.y / n }
+          },
+          { x: 0, y: 0 }
         )
+        const radius = SPREAD_PX * Math.ceil(n / 2)
+
+        group.forEach(({ marker: m }, i) => {
+          const angle = (2 * Math.PI * i / n) - Math.PI / 2
+          if (m._icon) m._icon.style.transition = 'transform 0.2s ease'
+          m.setLatLng((map as any).containerPointToLatLng([
+            cPt.x + Math.cos(angle) * radius,
+            cPt.y + Math.sin(angle) * radius * 0.65,
+          ]))
+
+          // Add title label for waypoint (camera) markers — no connecting line
+          if ((m as any)._spreadLabel !== undefined) {
+            const L = (window as any)._L
+            if (!L) return
+            const label = (m as any)._spreadLabel
+            const w = 100
+            m.setIcon(L.divIcon({
+              html: `<div style="display:flex;flex-direction:column;align-items:center;width:${w}px">
+                <div style="background:rgba(10,15,28,0.92);border:1px solid #94a3b8;color:#e2e8f0;font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;white-space:nowrap;max-width:${w}px;overflow:hidden;text-overflow:ellipsis;box-shadow:0 2px 6px rgba(0,0,0,0.4);margin-bottom:4px">${label || '📷'}</div>
+                <div style="width:32px;height:32px;background:#1e293b;border:2px solid #f97316;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 0 0 4px rgba(249,115,22,0.15);cursor:pointer">📷</div>
+              </div>`,
+              className: '',
+              iconAnchor: [w / 2, 40],
+            }))
+          }
+        })
+
+        // Restore when cursor leaves the spread circle
+        if (mouseMoveCleanup) mouseMoveCleanup()
+        const leaveRadius = radius + 44
+        function onMouseMove(e: any) {
+          const mPt = (map as any).latLngToContainerPoint(e.latlng)
+          if (Math.sqrt((mPt.x - cPt.x) ** 2 + (mPt.y - cPt.y) ** 2) > leaveRadius) {
+            restoreAll()
+          }
+        }
+        map.on('mousemove', onMouseMove)
+        mouseMoveCleanup = () => map.off('mousemove', onMouseMove)
       })
     }
   }
@@ -389,7 +704,8 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
     breakMarkersRef.current.forEach(m => m.remove())
     breakMarkersRef.current = []
 
-    addTripMarkers(trips[index], Lmap, mapRef.current!)
+    const calloutMarkers = addTripMarkers(trips[index], Lmap, mapRef.current!) ?? []
+    setupMarkerSpread([...waypointMarkersRef.current, ...calloutMarkers], mapRef.current!)
 
     // Highlight selected, dim others
     polylinesRef.current.forEach((pl, i) => {
@@ -458,22 +774,22 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
         if (trip.coordinates.length < 2) return
         const latLngs = trip.coordinates.map(([lng, lat]) => [lat, lng] as [number, number])
 
-        const glow = L.polyline(latLngs, { color: '#f97316', weight: 14, opacity: 0.15 }).addTo(map)
+        const glow = L.polyline(latLngs, { color: '#f97316', weight: 14, opacity: 0.15, smoothFactor: 0, interactive: false }).addTo(map)
         glowLines.push(glow)
 
-        const line = L.polyline(latLngs, { color: '#f97316', weight: 4, opacity: 0.95 }).addTo(map)
+        const line = L.polyline(latLngs, { color: '#f97316', weight: 4, opacity: 0.95, smoothFactor: 0, interactive: false }).addTo(map)
         polylinesRef.current.push(line)
 
-        line.on('click', () => selectTrip(index))
-        glow.on('click', () => selectTrip(index))
+        // Invisible wide hit zone — captures hover/click without affecting visual width
+        const hitZone = L.polyline(latLngs, { color: '#f97316', weight: 20, opacity: 0, smoothFactor: 0 }).addTo(map)
 
-        // Hover effect
-        line.on('mouseover', () => {
+        hitZone.on('click', () => selectTrip(index))
+
+        hitZone.on('mouseover', () => {
           if (selectedTripIndexRef.current === null) line.setStyle({ weight: 6, opacity: 1 })
         })
-        line.on('mouseout', () => {
+        hitZone.on('mouseout', () => {
           if (selectedTripIndexRef.current === null) line.setStyle({ weight: 4, opacity: 0.95 })
-          // Clear hovered distance when leaving polyline
           if (selectedTripIndexRef.current === index || externalHoverRef.current !== undefined) {
             setHoveredDistanceRef.current(null)
             externalHoverRef.current?.onDistance(null)
@@ -481,7 +797,7 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
         })
 
         // Map → Profile: track mouse position along polyline
-        line.on('mousemove', (e: any) => {
+        hitZone.on('mousemove', (e: any) => {
           const isExternalMode = externalHoverRef.current !== undefined
           if (!isExternalMode && selectedTripIndexRef.current !== index) return
           if (isExternalMode && index !== 0) return
@@ -496,23 +812,73 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
 
       ;(map as any)._glowLines = glowLines
 
-      // Planned routes (dashed, drawn below trip lines)
-      for (const route of (plannedRoutes ?? [])) {
+      // Planned routes — ridden segments orange solid, unridden dashed route color
+      for (let routeIdx = 0; routeIdx < (plannedRoutes ?? []).length; routeIdx++) {
+        const route = plannedRoutes[routeIdx]
         if (route.coordinates.length < 2) continue
-        const latLngs = route.coordinates.map(([lng, lat]) => [lat, lng] as [number, number])
-        const plannedGlow = L.polyline(latLngs, {
-          color: route.color,
-          weight: 10,
-          opacity: 0.08,
-          dashArray: undefined,
-        }).addTo(map)
-        const plannedLine = L.polyline(latLngs, {
-          color: route.color,
-          weight: 2,
-          opacity: 0.7,
-          dashArray: '8, 10',
-        }).addTo(map)
-        plannedLinesRef.current.push({ glow: plannedGlow, line: plannedLine })
+
+        const mask = computeRiddenMask(route.coordinates, trips)
+        const segments = splitRiddenSegments(route.coordinates, mask)
+        const segLines: { line: any; ridden: boolean }[] = []
+
+        for (const seg of segments) {
+          const latLngs = seg.coords.map(([lng, lat]) => [lat, lng] as [number, number])
+          const line = L.polyline(latLngs, seg.ridden
+            ? { color: '#f97316', weight: 3, opacity: 0.9, interactive: false }
+            : { color: route.color, weight: 2, opacity: 0.7, dashArray: '8, 10', interactive: false }
+          ).addTo(map)
+          segLines.push({ line, ridden: seg.ridden })
+        }
+
+        plannedLinesRef.current.push({ segLines, routeColor: route.color })
+
+        // Invisible hit zone for click
+        const hitLatLngs = route.coordinates.map(([lng, lat]) => [lat, lng] as [number, number])
+        const hitZone = L.polyline(hitLatLngs, { color: route.color, weight: 16, opacity: 0 }).addTo(map)
+        hitZone.on('click', () => {
+          setSelectedRouteIndex(routeIdx)
+          selectedRouteIndexRef.current = routeIdx
+          routeCumDistsRef.current = buildCumDists(route.coordinates)
+          // Use DB-stored elevation if available
+          if (route.elevation) {
+            routeElevationCache.current[route.id] = route.elevation
+            setRouteElevation(route.elevation)
+            return
+          }
+          const cached = routeElevationCache.current[route.id]
+          if (cached) {
+            setRouteElevation(cached)
+            return
+          }
+          setRouteElevation(null)
+          setRouteElevationLoading(true)
+          fetch('/api/elevation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ coordinates: route.coordinates, routeId: route.id }),
+          })
+            .then((r) => r.json())
+            .then((data) => {
+              if (data.elevation) {
+                routeElevationCache.current[route.id] = data.elevation
+                setRouteElevation(data.elevation)
+              }
+            })
+            .catch(() => {})
+            .finally(() => setRouteElevationLoading(false))
+        })
+
+        hitZone.on('mousemove', (e: any) => {
+          if (selectedRouteIndexRef.current !== routeIdx) return
+          const cd = routeCumDistsRef.current
+          if (!cd) return
+          const dist = closestDistOnPath(e.latlng.lat, e.latlng.lng, route.coordinates, cd)
+          setHoveredRouteDistanceRef.current(dist)
+        })
+        hitZone.on('mouseout', () => {
+          if (selectedRouteIndexRef.current !== routeIdx) return
+          setHoveredRouteDistanceRef.current(null)
+        })
       }
 
       // Camera markers
@@ -531,12 +897,15 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
       // Zoom threshold: show markers only when ~200km or less is visible (~zoom 9)
       const PHOTO_ZOOM_THRESHOLD = 9
       const waypointMarkers: any[] = []
+      waypointMarkersRef.current = waypointMarkers
 
       for (const wp of waypoints) {
         const marker = L.marker([wp.lat, wp.lng], { icon: cameraIcon })
-        marker.on('click', () => setSelectedPhoto(wp))
+        ;(marker as any)._spreadLabel = wp.title ?? ''
+        marker.on('click', () => setSelectedPhotoIndex(waypoints.indexOf(wp)))
         waypointMarkers.push(marker)
       }
+      setupMarkerSpread(waypointMarkers, map)
 
       function updateMarkerVisibility() {
         const zoom = map.getZoom()
@@ -550,6 +919,29 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
       map.on('zoomend', updateMarkerVisibility)
       updateMarkerVisibility()
 
+      // 🥚 Easter egg: Teysachaux — only visible at zoom ≥ 14
+      const EGG_ZOOM = 14
+      const eggIcon = L.divIcon({
+        html: `<div style="font-size:11px;opacity:0.35;cursor:pointer;user-select:none;line-height:1">🏔️</div>`,
+        className: '',
+        iconAnchor: [6, 11],
+      })
+      const eggMarker = L.marker([46.534056, 6.996306], { icon: eggIcon, zIndexOffset: -500, opacity: 0 })
+      eggMarker.on('click', () => window.open('https://www.instagram.com/molechaux_sports_team/', '_blank', 'noopener'))
+      eggMarker.bindTooltip(
+        '🏔️ <b>Teysachaux</b><br>La plus belle montagne du monde 🥇<br><i>(juste avant Moléson 🤫)</i>',
+        { direction: 'top', offset: [0, -14], className: 'egg-tooltip' }
+      )
+      function updateEggVisibility() {
+        if (map.getZoom() >= EGG_ZOOM) {
+          if (!map.hasLayer(eggMarker)) eggMarker.addTo(map)
+        } else {
+          if (map.hasLayer(eggMarker)) eggMarker.remove()
+        }
+      }
+      map.on('zoomend', updateEggVisibility)
+      updateEggVisibility()
+
       const allLatLngs = trips.flatMap((t) =>
         t.coordinates.map(([lng, lat]) => [lat, lng] as [number, number])
       )
@@ -559,7 +951,8 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
 
       // On trip detail page, auto-show markers for the single trip
       if (externalHover !== undefined && trips.length === 1) {
-        addTripMarkers(trips[0], L, map)
+        const calloutMarkers = addTripMarkers(trips[0], L, map) ?? []
+        setupMarkerSpread([...waypointMarkers, ...calloutMarkers], map)
       }
     }
 
@@ -641,41 +1034,41 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
 
             {/* Stats */}
             <div className="grid grid-cols-3 gap-px bg-slate-700/30 border-b border-slate-700/50">
-              <div className="px-4 py-3 bg-slate-900/50">
-                <div className="text-lg font-bold text-white">{(selectedTrip.distance_m / 1000).toFixed(1)}</div>
+              <div className="px-3 py-3 bg-slate-900/50 min-w-0">
+                <div className="text-base font-bold text-white truncate">{(selectedTrip.distance_m / 1000).toFixed(1)}</div>
                 <div className="text-xs text-slate-500 mt-0.5">{t('km')}</div>
               </div>
-              <div className="px-4 py-3 bg-slate-900/50">
-                <div className="text-lg font-bold text-white">
+              <div className="px-3 py-3 bg-slate-900/50 min-w-0">
+                <div className="text-base font-bold text-white truncate">
                   {selectedTrip.elevation ? `↑ ${computeElevationGain(selectedTrip.elevation).toLocaleString()}` : '—'}
                 </div>
-                <div className="text-xs text-slate-500 mt-0.5">m gain</div>
+                <div className="text-xs text-slate-500 mt-0.5">{t('mGain')}</div>
               </div>
-              <div className="px-4 py-3 bg-slate-900/50">
-                <div className="text-lg font-bold text-white">{selectedTrip.country ?? '—'}</div>
+              <div className="px-3 py-3 bg-slate-900/50 min-w-0">
+                <div className="text-base font-bold text-white truncate">{selectedTrip.country ?? '—'}</div>
                 <div className="text-xs text-slate-500 mt-0.5 truncate">{t('country') || 'pays'}</div>
               </div>
             </div>
 
             {/* Stats row 2: max speed, max altitude, breaks */}
             <div className="grid grid-cols-3 gap-px bg-slate-700/30 border-b border-slate-700/50">
-              <div className="px-4 py-3 bg-slate-900/50">
-                <div className="text-lg font-bold text-white">
+              <div className="px-3 py-3 bg-slate-900/50 min-w-0">
+                <div className="text-base font-bold text-white truncate">
                   {selectedTrip.max_speed_ms != null ? `${Math.round(selectedTrip.max_speed_ms * 3.6)}` : '—'}
                 </div>
-                <div className="text-xs text-slate-500 mt-0.5">km/h max</div>
+                <div className="text-xs text-slate-500 mt-0.5 truncate">km/h max</div>
               </div>
-              <div className="px-4 py-3 bg-slate-900/50">
-                <div className="text-lg font-bold text-white">
+              <div className="px-3 py-3 bg-slate-900/50 min-w-0">
+                <div className="text-base font-bold text-white truncate">
                   {selectedTrip.elev_high != null ? `${Math.round(selectedTrip.elev_high)}` : '—'}
                 </div>
-                <div className="text-xs text-slate-500 mt-0.5">m alt. max</div>
+                <div className="text-xs text-slate-500 mt-0.5 truncate">m alt. max</div>
               </div>
-              <div className="px-4 py-3 bg-slate-900/50">
-                <div className="text-lg font-bold text-white">
+              <div className="px-3 py-3 bg-slate-900/50 min-w-0">
+                <div className="text-base font-bold text-white truncate">
                   {selectedTrip.breaks != null ? selectedTrip.breaks.length : '—'}
                 </div>
-                <div className="text-xs text-slate-500 mt-0.5">pauses</div>
+                <div className="text-xs text-slate-500 mt-0.5 truncate">pauses</div>
               </div>
             </div>
 
@@ -686,6 +1079,7 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
                   points={selectedTrip.elevation}
                   hoveredDistance={hoveredDistance}
                   onHoverDistance={setHoveredDistance}
+                  gainLabel={t('mGain')}
                 />
               </div>
             )}
@@ -789,7 +1183,7 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
       </div>}
 
       {/* Top-left map controls */}
-      {externalHover === undefined && (
+      {externalHover === undefined && !aboutOpen && (
         <div className="absolute top-4 left-4 z-[9999] flex items-center gap-2">
           <button
             onClick={() => setShowWeather((v) => !v)}
@@ -820,12 +1214,63 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
         </div>
       )}
 
-      {selectedPhoto && (
+      {selectedPhotoIndex !== null && (
         <PhotoModal
-          imageUrl={selectedPhoto.url_large}
-          title={selectedPhoto.title ?? ''}
-          onClose={() => setSelectedPhoto(null)}
+          photos={waypoints.map((wp) => ({ imageUrl: wp.url_large, title: wp.title ?? '' }))}
+          initialIndex={selectedPhotoIndex}
+          onClose={() => setSelectedPhotoIndex(null)}
         />
+      )}
+
+      {/* Planned route panel */}
+      {routePanelData && (
+        <div
+          className="absolute top-4 left-4 right-4 md:left-[222px] z-[1000] rounded-2xl overflow-hidden"
+          style={{ background: 'rgba(15,23,42,0.97)', backdropFilter: 'blur(12px)', border: '1px solid rgba(51,65,85,0.8)', boxShadow: '0 24px 64px rgba(0,0,0,0.5)' }}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-slate-700/50">
+            <div>
+              <div className="text-sm font-bold text-white">{routePanelData.route.name}</div>
+              <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-400">
+                <span className="flex items-center gap-1">
+                  <span style={{ display: 'inline-block', width: 10, height: 3, background: '#f97316', borderRadius: 1 }} />
+                  {routePanelData.riddenKm.toLocaleString()} km parcourus
+                </span>
+                <span className="flex items-center gap-1">
+                  <span style={{ display: 'inline-block', width: 10, height: 0, borderTop: '2px dashed #22d3ee' }} />
+                  {routePanelData.remainKm.toLocaleString()} km restants
+                </span>
+                <span className="text-cyan-400 font-semibold">{routePanelData.pct}%</span>
+              </div>
+            </div>
+            <button
+              onClick={() => { setSelectedRouteIndex(null); setRouteElevation(null); setHoveredRouteDistance(null); selectedRouteIndexRef.current = null; routeCumDistsRef.current = null }}
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-700 transition-colors flex-shrink-0"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          {/* Elevation profile */}
+          <div className="px-4 py-3">
+            {routeElevationLoading ? (
+              <div className="text-xs text-slate-500 text-center py-4">Chargement du profil d&apos;altitude…</div>
+            ) : routeElevation ? (
+              <ElevationProfile
+                points={routeElevation}
+                riddenUpToM={routePanelData.riddenUpToM}
+                hoveredDistance={hoveredRouteDistance}
+                onHoverDistance={setHoveredRouteDistance}
+                gainLabel="m dénivelé+"
+                showStats={false}
+              />
+            ) : (
+              <div className="text-xs text-slate-500 text-center py-3">Profil d&apos;altitude non disponible</div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Stats overlay — hidden on mobile when a trip panel is open */}

@@ -89,7 +89,22 @@ export function AboutModal({ onClose }: AboutModalProps) {
               <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-base">🚴</div>
               <h3 className="text-lg font-semibold text-white">{t('vincentTitle')}</h3>
             </div>
-            <p className="text-slate-300 leading-relaxed">{t('vincentText')}</p>
+            <p className="text-slate-300 leading-relaxed mb-6">{t('vincentText')}</p>
+
+            {/* Stats grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { label: t('stat1Label'), value: t('stat1Value') },
+                { label: t('stat2Label'), value: t('stat2Value') },
+                { label: t('stat3Label'), value: t('stat3Value') },
+                { label: t('stat4Label'), value: t('stat4Value') },
+              ].map((s, i) => (
+                <div key={i} className="rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 text-center">
+                  <div className="text-orange-400 font-bold text-sm">{s.value}</div>
+                  <div className="text-slate-500 text-xs mt-0.5 leading-tight">{s.label}</div>
+                </div>
+              ))}
+            </div>
           </section>
 
           <div className="border-t border-slate-700/50" />

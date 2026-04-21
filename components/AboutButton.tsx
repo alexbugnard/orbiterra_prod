@@ -6,10 +6,20 @@ import { AboutModal } from './AboutModal'
 export function AboutButton({ label }: { label: string }) {
   const [open, setOpen] = useState(false)
 
+  function openModal() {
+    setOpen(true)
+    window.dispatchEvent(new CustomEvent('aboutmodal', { detail: { open: true } }))
+  }
+
+  function closeModal() {
+    setOpen(false)
+    window.dispatchEvent(new CustomEvent('aboutmodal', { detail: { open: false } }))
+  }
+
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
+        onClick={openModal}
         className="text-slate-400 hover:text-white transition-colors flex items-center gap-1.5"
         aria-label={label}
       >
@@ -22,7 +32,7 @@ export function AboutButton({ label }: { label: string }) {
         {/* Text — hidden on mobile */}
         <span className="hidden md:inline text-sm">{label}</span>
       </button>
-      {open && <AboutModal onClose={() => setOpen(false)} />}
+      {open && <AboutModal onClose={closeModal} />}
     </>
   )
 }

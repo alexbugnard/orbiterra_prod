@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { MapClient } from '@/components/MapClient'
 import { ElevationProfile } from '@/components/ElevationProfile'
@@ -26,6 +27,7 @@ interface Trip {
   start_lat: number | null
   start_lng: number | null
   max_speed_ms: number | null
+  max_speed_distance_m: number | null
   elev_high: number | null
   breaks: { lat: number; lng: number; duration_min: number; distance_m: number }[] | null
   max_speed_lat: number | null
@@ -53,7 +55,38 @@ export function TripViewClient({
   date,
   journal,
 }: TripViewClientProps) {
+  const t = useTranslations('trip')
   const [hoveredDistance, setHoveredDistance] = useState<number | null>(null)
+
+  const elevationMarkers = (() => {
+    const markers: { distanceM: number; label: string; color: string }[] = []
+    if (trip.elevation && trip.elevation.length > 1) {
+      // Max altitude: find the distance of the highest point in the profile
+      let maxAlt = -Infinity
+      let maxAltDist = 0
+      for (const [d, a] of trip.elevation) {
+        if (a > maxAlt) { maxAlt = a; maxAltDist = d }
+      }
+      markers.push({ distanceM: maxAltDist, label: `▲ ${Math.round(maxAlt)} m`, color: '#10b981' })
+
+      // Max speed
+      if (trip.max_speed_ms != null && trip.max_speed_distance_m != null) {
+        markers.push({
+          distanceM: trip.max_speed_distance_m,
+          label: `MAX ${Math.round(trip.max_speed_ms * 3.6)} km/h`,
+          color: '#3b82f6',
+        })
+      }
+
+      // Breaks
+      if (trip.breaks) {
+        for (const b of trip.breaks) {
+          markers.push({ distanceM: b.distance_m, label: `⏸ ${b.duration_min} min`, color: '#f59e0b' })
+        }
+      }
+    }
+    return markers
+  })()
 
   return (
     <div className="flex flex-col h-[calc(100vh-57px)] bg-slate-900">
@@ -84,7 +117,7 @@ export function TripViewClient({
                 <div className="w-px h-8 bg-slate-700" />
                 <div className="text-right">
                   <div className="text-xl font-bold text-white">↑ {computeElevationGain(trip.elevation).toLocaleString()}</div>
-                  <div className="text-xs text-slate-500">m gain</div>
+                  <div className="text-xs text-slate-500">{t('mGain')}</div>
                 </div>
               </>
             )}
@@ -103,6 +136,8 @@ export function TripViewClient({
               points={trip.elevation}
               hoveredDistance={hoveredDistance}
               onHoverDistance={setHoveredDistance}
+              markers={elevationMarkers}
+              gainLabel={t('mGain')}
             />
           </div>
         )}

@@ -139,6 +139,7 @@ export async function fetchStravaStreams(
 export interface PeakLocations {
   max_speed_lat: number | null
   max_speed_lng: number | null
+  max_speed_distance_m: number | null
   elev_high_lat: number | null
   elev_high_lng: number | null
 }
@@ -166,6 +167,7 @@ export function findPeakLocations(streams: StravaStreams): PeakLocations {
   return {
     max_speed_lat: maxSpeedIdx >= 0 ? latlng[maxSpeedIdx][0] : null,
     max_speed_lng: maxSpeedIdx >= 0 ? latlng[maxSpeedIdx][1] : null,
+    max_speed_distance_m: maxSpeedIdx >= 0 ? (distance[maxSpeedIdx] ?? null) : null,
     elev_high_lat: maxAltIdx >= 0 ? latlng[maxAltIdx][0] : null,
     elev_high_lng: maxAltIdx >= 0 ? latlng[maxAltIdx][1] : null,
   }

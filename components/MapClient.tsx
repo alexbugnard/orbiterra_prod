@@ -49,6 +49,7 @@ interface PlannedRoute {
   name: string
   coordinates: [number, number][]
   color: string
+  elevation: [number, number][] | null
 }
 
 interface Video {

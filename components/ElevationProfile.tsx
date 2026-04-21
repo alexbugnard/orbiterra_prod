@@ -2,16 +2,26 @@
 
 import { useEffect, useRef, useState } from 'react'
 
+interface ElevationMarker {
+  distanceM: number
+  label: string
+  color: string
+}
+
 interface ElevationProfileProps {
   points: [number, number][] // [distanceMeters, altitudeMeters]
   hoveredDistance?: number | null
   onHoverDistance?: (d: number | null) => void
+  markers?: ElevationMarker[]
+  gainLabel?: string
+  riddenUpToM?: number
+  showStats?: boolean
 }
 
-const H = 88
-const PAD = { top: 6, right: 8, bottom: 20, left: 36 }
+const H = 116
+const PAD = { top: 34, right: 8, bottom: 20, left: 36 }
 
-export function ElevationProfile({ points, hoveredDistance, onHoverDistance }: ElevationProfileProps) {
+export function ElevationProfile({ points, hoveredDistance, onHoverDistance, markers = [], gainLabel = 'm gain', riddenUpToM, showStats = true }: ElevationProfileProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(400)
 
@@ -57,13 +67,16 @@ export function ElevationProfile({ points, hoveredDistance, onHoverDistance }: E
     xTicks.push((maxDist / (xTickCount + 1)) * i)
   }
 
+  const riddenClipW = riddenUpToM != null
+    ? Math.max(0, Math.min(innerW, toX(riddenUpToM) - PAD.left))
+    : null
+
   // Compute indicator values when hoveredDistance is set
   let indicatorX: number | null = null
   let indicatorY: number | null = null
   if (hoveredDistance != null) {
     const clamped = Math.max(0, Math.min(maxDist, hoveredDistance))
     indicatorX = toX(clamped)
-    // Find nearest point
     let nearest = points[0]
     let minDiff = Math.abs(points[0][0] - clamped)
     for (const p of points) {
@@ -103,10 +116,10 @@ export function ElevationProfile({ points, hoveredDistance, onHoverDistance }: E
 
   return (
     <div ref={containerRef}>
-      <div className="flex items-center justify-between mb-1.5 text-xs text-slate-500">
-        <span>↑ {Math.round(totalGain).toLocaleString()} m gain</span>
+      {showStats && <div className="flex items-center justify-between mb-1.5 text-xs text-slate-500">
+        <span>↑ {Math.round(totalGain).toLocaleString()} {gainLabel}</span>
         <span>{Math.round(minAlt)} – {Math.round(maxAlt)} m</span>
-      </div>
+      </div>}
 
       <svg
         width={width}
@@ -122,6 +135,15 @@ export function ElevationProfile({ points, hoveredDistance, onHoverDistance }: E
             <stop offset="0%" stopColor="#f97316" stopOpacity="0.5" />
             <stop offset="100%" stopColor="#f97316" stopOpacity="0.05" />
           </linearGradient>
+          <linearGradient id="elev-grad-slate" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#475569" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#475569" stopOpacity="0.04" />
+          </linearGradient>
+          {riddenClipW != null && (
+            <clipPath id="ridden-clip">
+              <rect x={PAD.left} y={0} width={riddenClipW} height={H} />
+            </clipPath>
+          )}
         </defs>
 
         {/* Grid lines */}
@@ -130,11 +152,31 @@ export function ElevationProfile({ points, hoveredDistance, onHoverDistance }: E
             stroke="#334155" strokeWidth="0.5" />
         ))}
 
-        {/* Area */}
-        <path d={areaD} fill="url(#elev-grad)" />
-
-        {/* Line */}
-        <path d={pathD} fill="none" stroke="#f97316" strokeWidth="1.5" strokeLinejoin="round" />
+        {riddenClipW != null ? (
+          <>
+            {/* Full area (slate = unridden) */}
+            <path d={areaD} fill="url(#elev-grad-slate)" />
+            {/* Full line (slate dashed = unridden) */}
+            <path d={pathD} fill="none" stroke="#475569" strokeWidth="1.5" strokeLinejoin="round" strokeDasharray="5 3" />
+            {/* Ridden area clipped */}
+            <path d={areaD} fill="url(#elev-grad)" clipPath="url(#ridden-clip)" />
+            {/* Ridden line clipped */}
+            <path d={pathD} fill="none" stroke="#f97316" strokeWidth="1.5" strokeLinejoin="round" clipPath="url(#ridden-clip)" />
+            {/* Frontier line */}
+            {riddenClipW > 0 && (
+              <line
+                x1={PAD.left + riddenClipW} y1={PAD.top}
+                x2={PAD.left + riddenClipW} y2={PAD.top + innerH}
+                stroke="#94a3b8" strokeWidth="1" strokeDasharray="3 2" opacity="0.7"
+              />
+            )}
+          </>
+        ) : (
+          <>
+            <path d={areaD} fill="url(#elev-grad)" />
+            <path d={pathD} fill="none" stroke="#f97316" strokeWidth="1.5" strokeLinejoin="round" />
+          </>
+        )}
 
         {/* Y-axis labels */}
         {yTicks.map((alt, i) => (
@@ -151,6 +193,34 @@ export function ElevationProfile({ points, hoveredDistance, onHoverDistance }: E
             {(dist / 1000).toFixed(0)}km
           </text>
         ))}
+
+        {/* Event markers */}
+        {(() => {
+          const valid = markers
+            .map((m, i) => ({ ...m, i, x: toX(m.distanceM) }))
+            .filter((m) => m.distanceM >= 0 && m.distanceM <= maxDist)
+            .sort((a, b) => a.x - b.x)
+
+          const MIN_GAP = 52
+          const rows: number[] = []
+          for (let k = 0; k < valid.length; k++) {
+            if (k === 0) { rows.push(0); continue }
+            rows.push(valid[k].x - valid[k - 1].x < MIN_GAP ? 1 - rows[k - 1] : 0)
+          }
+
+          return valid.map((m, k) => {
+            const row = rows[k]
+            const labelY = row === 0 ? 10 : 22
+            const connectorTop = labelY + 3
+            return (
+              <g key={m.i}>
+                <text x={m.x} y={labelY} textAnchor="middle" fontSize="9" fontWeight="bold" fill={m.color}>{m.label}</text>
+                <line x1={m.x} y1={connectorTop} x2={m.x} y2={PAD.top} stroke={m.color} strokeWidth="1" opacity="0.5" />
+                <line x1={m.x} y1={PAD.top} x2={m.x} y2={PAD.top + innerH} stroke={m.color} strokeWidth="1" strokeDasharray="3 2" opacity="0.6" />
+              </g>
+            )
+          })
+        })()}
 
         {/* Hover indicator */}
         {indicatorX != null && indicatorY != null && (

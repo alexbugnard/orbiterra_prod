@@ -11,7 +11,7 @@ export default async function TripPage({ params }: { params: Promise<{ id: strin
 
   const { data: trip } = await supabase
     .from('trips')
-    .select('id, name, start_date, end_date, distance_m, coordinates, visible, journal_fr, journal_en, elevation, max_speed_ms, elev_high, breaks, max_speed_lat, max_speed_lng, elev_high_lat, elev_high_lng')
+    .select('id, name, start_date, end_date, distance_m, coordinates, visible, journal_fr, journal_en, elevation, max_speed_ms, elev_high, breaks, max_speed_lat, max_speed_lng, elev_high_lat, elev_high_lng, max_speed_distance_m')
     .eq('id', id)
     .eq('visible', true)
     .single()
@@ -45,6 +45,7 @@ export default async function TripPage({ params }: { params: Promise<{ id: strin
     breaks: (trip.breaks ?? null) as { lat: number; lng: number; duration_min: number; distance_m: number }[] | null,
     max_speed_lat: (trip.max_speed_lat ?? null) as number | null,
     max_speed_lng: (trip.max_speed_lng ?? null) as number | null,
+    max_speed_distance_m: (trip.max_speed_distance_m ?? null) as number | null,
     elev_high_lat: (trip.elev_high_lat ?? null) as number | null,
     elev_high_lng: (trip.elev_high_lng ?? null) as number | null,
   }

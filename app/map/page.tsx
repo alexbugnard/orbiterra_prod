@@ -73,7 +73,7 @@ async function getMapData() {
       .select('id, lat, lng, url_large, title'),
     supabase
       .from('planned_routes')
-      .select('id, name, coordinates, color'),
+      .select('id, name, coordinates, color, elevation'),
     supabase
       .from('videos')
       .select('id, youtube_id, title, published_at')
@@ -106,6 +106,7 @@ async function getMapData() {
     name: r.name,
     coordinates: r.coordinates as [number, number][],
     color: r.color,
+    elevation: (r.elevation ?? null) as [number, number][] | null,
   }))
 
   const formattedVideos = (videos ?? []).map((v: any) => ({
@@ -150,12 +151,6 @@ export default async function MapPage() {
   const mainPlannedRoute = plannedRoutes[0] ?? null
   const mainCutoff = mainPlannedRoute ? computeRouteProgress(trips, mainPlannedRoute.coordinates) : 0
 
-  // Trim the planned route: hide the portion already covered by rides
-  const trimmedPlannedRoutes = plannedRoutes.map((r, i) => {
-    const cutoff = i === 0 ? mainCutoff : computeRouteProgress(trips, r.coordinates)
-    return { ...r, coordinates: r.coordinates.slice(cutoff) }
-  })
-
   const progress = mainPlannedRoute
     ? computeAmericasProgress(mainCutoff, mainPlannedRoute.coordinates)
     : null
@@ -180,7 +175,7 @@ export default async function MapPage() {
   return (
     <div className="relative h-[calc(100vh-57px)]">
       <SyncTrigger />
-      <MapClient trips={trips} waypoints={waypoints} plannedRoutes={trimmedPlannedRoutes} videos={videos} locale={locale} stats={stats} />
+      <MapClient trips={trips} waypoints={waypoints} plannedRoutes={plannedRoutes} videos={videos} locale={locale} stats={stats} />
     </div>
   )
 }

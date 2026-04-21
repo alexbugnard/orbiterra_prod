@@ -4,7 +4,9 @@
     "about": "About"
   },
   "landing": {
-    "cta": "View the journey"
+    "cta": "View the journey",
+    "kmRidden": "km ridden",
+    "ridesTracked": "rides tracked"
   },
   "map": {
     "rides": "Rides",
@@ -22,18 +24,29 @@
     "previous": "Previous",
     "next": "Next",
     "loading": "Loading map…",
-    "videosTitle": "Videos from that day"
+    "videosTitle": "Videos from that day",
+    "mGain": "m elevation gain"
   },
   "trip": {
-    "backToMap": "← Back to map"
+    "backToMap": "Back to map",
+    "mGain": "m elevation gain"
   },
   "about": {
     "title": "About",
     "close": "Close",
     "goalTitle": "The goal",
-    "goalText": "Ride from Deadhorse (Alaska) to Ushuaia (Argentina) — roughly 30,000 km across two continents, from Arctic ice to Patagonian winds. A self-supported journey, shaped by roads and encounters along the way.",
+    "goalText": "Ride from Deadhorse (Alaska) to Ushuaia (Argentina) — roughly 30,000 km across two continents, from Arctic ice to Patagonian winds. A fully self-supported journey departing summer 2025, shaped by roads, mountain passes and encounters along the way.",
     "vincentTitle": "Who is Vincent?",
-    "vincentText": "Vincent is a passionate cyclist and born adventurer. After years of dreaming about the ultimate Americas crossing, he left everything behind, packed his bags onto his bike and hit the road. Always smiling, always curious — endlessly fascinated by the landscapes and cultures he rides through.",
+    "vincentText": "Vincent Morisetti is a Swiss cyclist with a passion for adventure and wide-open spaces. After years of riding in the Alps and dreaming of a grand journey, he planned everything to cross both Americas by bike — from the Arctic Circle to Tierra del Fuego. An athlete at heart and endlessly curious about the cultures he rides through, he documents the adventure on video and Instagram to share every stage with his community.",
+    "statsLabel": "The journey in numbers",
+    "stat1Label": "Total planned distance",
+    "stat1Value": "~30,000 km",
+    "stat2Label": "Countries",
+    "stat2Value": "14",
+    "stat3Label": "Start",
+    "stat3Value": "Deadhorse, Alaska",
+    "stat4Label": "Finish",
+    "stat4Value": "Ushuaia, Argentina",
     "sponsorsTitle": "Sponsors & support",
     "sponsorsText": "This journey is made possible thanks to the support of our partners. Want to support the adventure? Get in touch.",
     "videosTitle": "Videos",

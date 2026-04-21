@@ -57,6 +57,8 @@ export default async function LandingPage() {
               width={160}
               height={160}
               className="mx-auto rounded-full bg-white/90 p-2 shadow-xl"
+              loading="eager"
+              priority
             />
           </div>
 
@@ -90,11 +92,11 @@ export default async function LandingPage() {
           <div className="max-w-2xl mx-auto px-6 py-8 grid grid-cols-2 gap-8 text-center">
             <div>
               <div className="text-3xl font-bold text-white">{totalKm.toLocaleString()}</div>
-              <div className="text-sm text-slate-500 mt-1">km ridden</div>
+              <div className="text-sm text-slate-500 mt-1">{t('kmRidden')}</div>
             </div>
             <div>
               <div className="text-3xl font-bold text-white">{rideCount}</div>
-              <div className="text-sm text-slate-500 mt-1">rides tracked</div>
+              <div className="text-sm text-slate-500 mt-1">{t('ridesTracked')}</div>
             </div>
           </div>
         </div>

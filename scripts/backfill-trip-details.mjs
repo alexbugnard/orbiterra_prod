@@ -42,6 +42,7 @@ function findPeakLocations(streams) {
   return {
     max_speed_lat: maxSpeedIdx >= 0 ? latlng[maxSpeedIdx][0] : null,
     max_speed_lng: maxSpeedIdx >= 0 ? latlng[maxSpeedIdx][1] : null,
+    max_speed_distance_m: maxSpeedIdx >= 0 ? (distance[maxSpeedIdx] ?? null) : null,
     elev_high_lat: maxAltIdx >= 0 ? latlng[maxAltIdx][0] : null,
     elev_high_lng: maxAltIdx >= 0 ? latlng[maxAltIdx][1] : null,
   }
