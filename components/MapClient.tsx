@@ -91,8 +91,11 @@ interface MapClientProps {
   locale: string
   externalHover?: ExternalHover
   stats?: Stats | null
+  vincentLat?: number | null
+  vincentLng?: number | null
+  vincentLastDate?: string | null
 }
 
-export function MapClient({ trips, waypoints, plannedRoutes, videos, locale, externalHover, stats, currentTz }: MapClientProps) {
-  return <Map trips={trips} waypoints={waypoints} plannedRoutes={plannedRoutes} videos={videos} locale={locale} externalHover={externalHover} stats={stats} currentTz={currentTz} />
+export function MapClient({ trips, waypoints, plannedRoutes, videos, locale, externalHover, stats, currentTz, vincentLat, vincentLng, vincentLastDate }: MapClientProps) {
+  return <Map trips={trips} waypoints={waypoints} plannedRoutes={plannedRoutes} videos={videos} locale={locale} externalHover={externalHover} stats={stats} currentTz={currentTz} vincentLat={vincentLat} vincentLng={vincentLng} vincentLastDate={vincentLastDate} />
 }

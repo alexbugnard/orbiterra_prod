@@ -27,7 +27,9 @@
     "next": "Next",
     "loading": "Loading map…",
     "videosTitle": "Videos from that day",
-    "mGain": "m elevation gain"
+    "mGain": "m elevation gain",
+    "vincentMarkerLabel": "📍 Vincent",
+    "vincentLastSeen": "Last known position"
   },
   "trip": {
     "backToMap": "Back to map",

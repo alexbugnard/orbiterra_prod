@@ -27,7 +27,9 @@
     "next": "Suivant",
     "loading": "Chargement de la carte…",
     "videosTitle": "Vidéos du jour",
-    "mGain": "m dénivelé+"
+    "mGain": "m dénivelé+",
+    "vincentMarkerLabel": "📍 Vincent",
+    "vincentLastSeen": "Dernière position connue"
   },
   "trip": {
     "backToMap": "Retour à la carte",

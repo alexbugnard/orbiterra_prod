@@ -12,23 +12,54 @@ const ICON_EMOJI: Record<string, string> = {
   'storm': '⛈️',
 }
 
-const WEATHER_ZOOM_THRESHOLD = 9
+const WEATHER_ZOOM_THRESHOLD = 7
+
+function windColor(speed: number): string {
+  if (speed < 15) return '#22d3ee'
+  if (speed < 30) return '#84cc16'
+  if (speed < 50) return '#f59e0b'
+  if (speed < 70) return '#f97316'
+  return '#ef4444'
+}
+
+function windAnimDuration(speed: number): number {
+  if (speed < 15) return 2.5
+  if (speed < 30) return 1.8
+  if (speed < 50) return 1.2
+  if (speed < 70) return 0.8
+  return 0.5
+}
 
 function buildIconHtml(point: WeatherPointResponse, theme: 'dark' | 'topo' = 'dark'): string {
   const emoji = point.icon ? (ICON_EMOJI[point.icon] ?? '☁️') : '☁️'
   const bg = theme === 'topo' ? 'rgba(255,255,255,0.95)' : 'rgba(15,23,42,0.88)'
   const border = theme === 'topo' ? '1px solid rgba(30,41,59,0.35)' : '1px solid rgba(34,211,238,0.4)'
   const shadow = theme === 'topo' ? '0 2px 6px rgba(0,0,0,0.25)' : '0 2px 6px rgba(0,0,0,0.5)'
-  return `<div style="
-    font-size:18px;line-height:1;
-    background:${bg};
-    border:${border};
-    border-radius:50%;
-    width:32px;height:32px;
-    display:flex;align-items:center;justify-content:center;
-    box-shadow:${shadow};
-    cursor:default;
-  ">${emoji}</div>`
+  const circle = `<div style="font-size:18px;line-height:1;background:${bg};border:${border};border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;box-shadow:${shadow};cursor:default;">${emoji}</div>`
+
+  if (point.wind_direction === null || point.wind_speed === null) return circle
+
+  const color = windColor(point.wind_speed)
+  const dur = windAnimDuration(point.wind_speed)
+  const anim = `wba${point.seq}`
+
+  return `
+    <style>
+      @keyframes ${anim} {
+        0%,100%{transform:rotate(${point.wind_direction}deg) translateY(0);opacity:.65;}
+        50%{transform:rotate(${point.wind_direction}deg) translateY(-5px);opacity:1;}
+      }
+    </style>
+    <div style="display:flex;flex-direction:column;align-items:center;cursor:default;gap:3px;">
+      ${circle}
+      <div style="display:flex;flex-direction:column;align-items:center;gap:1px;">
+        <svg width="14" height="18" viewBox="0 0 14 18"
+          style="animation:${anim} ${dur}s ease-in-out infinite;filter:drop-shadow(0 0 5px ${color});">
+          <polygon points="7,0 12,14 7,11 2,14" fill="${color}"/>
+        </svg>
+        <span style="font-size:9px;font-weight:700;color:${color};font-family:system-ui,sans-serif;line-height:1;">${Math.round(point.wind_speed)} km/h</span>
+      </div>
+    </div>`
 }
 
 function buildTooltipHtml(point: WeatherPointResponse): string {
@@ -39,15 +70,6 @@ function buildTooltipHtml(point: WeatherPointResponse): string {
         <span style="font-size:13px;font-weight:600;color:#f1f5f9">${Math.round(point.temp_min)}°</span>
         <span style="font-size:11px;color:#475569">/</span>
         <span style="font-size:13px;font-weight:600;color:#f1f5f9">${Math.round(point.temp_max)}°</span>
-       </div>`
-    : ''
-
-  const windHtml = point.wind_direction !== null && point.wind_speed !== null
-    ? `<div style="display:flex;align-items:center;gap:4px;margin-top:3px">
-        <svg width="12" height="12" viewBox="0 0 12 12" style="transform:rotate(${point.wind_direction}deg);flex-shrink:0">
-          <polygon points="6,1 9,10 6,8 3,10" fill="#22d3ee" opacity="0.85"/>
-        </svg>
-        <span style="font-size:10px;color:#94a3b8">${Math.round(point.wind_speed)} km/h</span>
        </div>`
     : ''
 
@@ -67,7 +89,6 @@ function buildTooltipHtml(point: WeatherPointResponse): string {
   ">
     <div style="font-size:22px;line-height:1">${emoji}</div>
     ${tempHtml}
-    ${windHtml}
     ${labelHtml}
   </div>`
 }
@@ -102,8 +123,8 @@ export class WeatherLayer {
       const icon = L.divIcon({
         html: buildIconHtml(point, this.theme),
         className: '',
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
+        iconSize: [48, 70],
+        iconAnchor: [24, 16],
       })
 
       const marker = L.marker([point.lat, point.lng], { icon })
@@ -158,8 +179,8 @@ export class WeatherLayer {
       marker.setIcon(L.divIcon({
         html: buildIconHtml(point, theme),
         className: '',
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
+        iconSize: [48, 70],
+        iconAnchor: [24, 16],
       }))
     })
   }

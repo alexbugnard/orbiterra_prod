@@ -175,17 +175,23 @@ export default async function MapPage() {
     },
   } : null
 
-  // Timezone at Vincent's current position (last ridden point on planned route)
+  // Timezone + live position at Vincent's current position (last ridden point on planned route)
   let currentTz: string | null = null
+  let vincentLat: number | null = null
+  let vincentLng: number | null = null
   if (mainPlannedRoute && mainCutoff > 0) {
     const [lng, lat] = mainPlannedRoute.coordinates[mainCutoff]
+    vincentLat = lat
+    vincentLng = lng
     try { currentTz = tzlookup(lat, lng) } catch {}
   }
+  const lastTrip = trips[trips.length - 1] ?? null
+  const vincentLastDate: string | null = lastTrip?.start_date ?? null
 
   return (
     <div className="relative h-[calc(100vh-57px)]">
       <SyncTrigger />
-      <MapClient trips={trips} waypoints={waypoints} plannedRoutes={plannedRoutes} videos={videos} locale={locale} stats={stats} currentTz={currentTz} />
+      <MapClient trips={trips} waypoints={waypoints} plannedRoutes={plannedRoutes} videos={videos} locale={locale} stats={stats} currentTz={currentTz} vincentLat={vincentLat} vincentLng={vincentLng} vincentLastDate={vincentLastDate} />
     </div>
   )
 }

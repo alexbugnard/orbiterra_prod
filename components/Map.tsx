@@ -1,5 +1,8 @@
 'use client'
 
+const PHOTO_ZOOM_THRESHOLD = 9
+const WEATHER_ZOOM_THRESHOLD = 7
+
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Map as LeafletMap, Polyline } from 'leaflet'
 import { useTranslations } from 'next-intl'
@@ -85,6 +88,9 @@ interface MapProps {
   externalHover?: ExternalHover
   stats?: Stats | null
   currentTz?: string | null
+  vincentLat?: number | null
+  vincentLng?: number | null
+  vincentLastDate?: string | null
 }
 
 function toDateStr(iso: string) {
@@ -255,8 +261,10 @@ function computeRiddenDistM(coords: [number, number][], mask: boolean[]): number
 
 // ──────────────────────────────────────────────────────────────────────────────
 
-export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalHover, stats, currentTz }: MapProps) {
+export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalHover, stats, currentTz, vincentLat, vincentLng, vincentLastDate }: MapProps) {
   const t = useTranslations('map')
+  const vincentMarkerLabel = t('vincentMarkerLabel')
+  const vincentLastSeenLabel = t('vincentLastSeen')
   const isMobile = useIsMobile()
   const mapRef = useRef<LeafletMap | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -268,6 +276,7 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
   const waypointMarkersRef = useRef<any[]>([])
   const [showWeather, setShowWeather] = useState(false)
   const [basemap, setBasemap] = useState<'dark' | 'topo'>('dark')
+  const [mapZoom, setMapZoom] = useState(6)
   const [aboutOpen, setAboutOpen] = useState(false)
   const [selectedRouteIndex, setSelectedRouteIndex] = useState<number | null>(null)
   const [routeElevation, setRouteElevation] = useState<[number, number][] | null>(null)
@@ -755,7 +764,12 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
 
       ;(window as any)._L = L
 
-      const map = L.map(containerRef.current, { zoomControl: false }).setView([46.2276, 2.2137], 6)
+      const map = L.map(containerRef.current, {
+        zoomControl: false,
+        minZoom: 3,
+        maxBounds: [[-85, -Infinity], [85, Infinity]],
+        maxBoundsViscosity: 1.0,
+      }).setView([46.2276, 2.2137], 6)
 
       tileLayerRef.current = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
@@ -906,8 +920,7 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
         iconAnchor: [16, 16],
       })
 
-      // Zoom threshold: show markers only when ~200km or less is visible (~zoom 9)
-      const PHOTO_ZOOM_THRESHOLD = 9
+      // Zoom threshold defined at module level (PHOTO_ZOOM_THRESHOLD)
       const waypointMarkers: any[] = []
       waypointMarkersRef.current = waypointMarkers
 
@@ -928,7 +941,7 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
         }
       }
 
-      map.on('zoomend', updateMarkerVisibility)
+      map.on('zoomend', () => { updateMarkerVisibility(); setMapZoom(map.getZoom()) })
       updateMarkerVisibility()
 
       // 🥚 Easter egg: Teysachaux — only visible at zoom ≥ 14
@@ -954,11 +967,47 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
       map.on('zoomend', updateEggVisibility)
       updateEggVisibility()
 
-      const allLatLngs = trips.flatMap((t) =>
-        t.coordinates.map(([lng, lat]) => [lat, lng] as [number, number])
-      )
-      if (allLatLngs.length > 0) {
-        map.fitBounds(L.latLngBounds(allLatLngs), { padding: [40, 40] })
+      // Live position marker
+      if (vincentLat !== null && vincentLat !== undefined && vincentLng !== null && vincentLng !== undefined) {
+        const dateLabel = vincentLastDate
+          ? new Date(vincentLastDate).toLocaleDateString(locale === 'en' ? 'en-GB' : 'fr-CH', { day: 'numeric', month: 'long', year: 'numeric' })
+          : ''
+        const vincentIcon = L.divIcon({
+          html: `
+            <style>
+              @keyframes vp-ping{0%{transform:scale(1);opacity:.7}100%{transform:scale(3.5);opacity:0}}
+              @keyframes vp-ping2{0%{transform:scale(1);opacity:.5}100%{transform:scale(3.5);opacity:0}}
+              @keyframes vp-core{0%,100%{box-shadow:0 0 0 2px rgba(34,211,238,.5),0 0 8px rgba(34,211,238,.6)}50%{box-shadow:0 0 0 2px rgba(34,211,238,.8),0 0 14px rgba(34,211,238,.9)}}
+            </style>
+            <div style="position:relative;width:12px;height:12px;">
+              <div style="position:absolute;inset:0;border-radius:50%;background:#22d3ee;animation:vp-ping 2s ease-out infinite;"></div>
+              <div style="position:absolute;inset:0;border-radius:50%;background:#22d3ee;animation:vp-ping2 2s ease-out .8s infinite;"></div>
+              <div style="position:absolute;inset:2px;border-radius:50%;background:#22d3ee;border:1px solid #fff;animation:vp-core 2.5s ease-in-out infinite;"></div>
+            </div>`,
+          className: '',
+          iconSize: [12, 12],
+          iconAnchor: [6, 6],
+        })
+        const vincentMarker = L.marker([vincentLat, vincentLng], { icon: vincentIcon, zIndexOffset: 1000, interactive: true })
+        vincentMarker.bindTooltip(
+          `<div style="font-family:system-ui,sans-serif;text-align:center;">
+            <div style="font-weight:700;color:#22d3ee;font-size:12px;">${vincentMarkerLabel}</div>
+            ${dateLabel ? `<div style="font-size:10px;color:#94a3b8;margin-top:2px;">${vincentLastSeenLabel}<br>${dateLabel}</div>` : ''}
+          </div>`,
+          { direction: 'top', offset: [0, -10], opacity: 1, className: 'weather-tooltip' }
+        )
+        vincentMarker.addTo(map)
+      }
+
+      if (vincentLat !== null && vincentLat !== undefined && vincentLng !== null && vincentLng !== undefined) {
+        map.setView([vincentLat, vincentLng], 3)
+      } else {
+        const allLatLngs = trips.flatMap((t) =>
+          t.coordinates.map(([lng, lat]) => [lat, lng] as [number, number])
+        )
+        if (allLatLngs.length > 0) {
+          map.fitBounds(L.latLngBounds(allLatLngs), { padding: [40, 40] })
+        }
       }
 
       // On trip detail page, auto-show markers for the single trip
@@ -1198,19 +1247,6 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
       {externalHover === undefined && !aboutOpen && !(isMobile && selectedRouteIndex !== null) && (
         <div className="absolute top-4 left-4 z-[9999] flex items-center gap-2">
           <button
-            onClick={() => setShowWeather((v) => !v)}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all"
-            style={{
-              background: showWeather ? 'rgba(34,211,238,0.2)' : 'rgba(15,23,42,0.85)',
-              border: showWeather ? '1px solid rgba(34,211,238,0.6)' : '1px solid rgba(51,65,85,0.8)',
-              backdropFilter: 'blur(8px)',
-              color: showWeather ? '#22d3ee' : '#94a3b8',
-            }}
-          >
-            <span style={{ fontSize: 16 }}>⛅</span>
-            <span className="hidden md:inline">Météo</span>
-          </button>
-          <button
             onClick={() => setBasemap((v) => v === 'dark' ? 'topo' : 'dark')}
             className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all"
             style={{
@@ -1223,6 +1259,21 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
             <span style={{ fontSize: 16 }}>🗻</span>
             <span className="hidden md:inline">Topo</span>
           </button>
+          {mapZoom >= WEATHER_ZOOM_THRESHOLD && (
+            <button
+              onClick={() => setShowWeather((v) => !v)}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-all"
+              style={{
+                background: showWeather ? 'rgba(34,211,238,0.2)' : 'rgba(15,23,42,0.85)',
+                border: showWeather ? '1px solid rgba(34,211,238,0.6)' : '1px solid rgba(51,65,85,0.8)',
+                backdropFilter: 'blur(8px)',
+                color: showWeather ? '#22d3ee' : '#94a3b8',
+              }}
+            >
+              <span style={{ fontSize: 16 }}>⛅</span>
+              <span className="hidden md:inline">Météo</span>
+            </button>
+          )}
         </div>
       )}
 
