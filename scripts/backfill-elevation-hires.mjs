@@ -2,8 +2,8 @@
 // Usage: node scripts/backfill-elevation-hires.mjs
 // Targets 1 point per km; batches 99 pts per opentopodata request (1 req/s rate limit)
 
-const SUPABASE_URL = 'https://ynskuvlfcozwoofffabt.supabase.co'
-const SUPABASE_KEY = 'SUPABASE_SERVICE_KEY_REMOVED'
+const SUPABASE_URL = process.env.SUPABASE_URL
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 const BATCH = 99      // opentopodata max per request
 const RATE_MS = 1100  // 1 req/s rate limit
 

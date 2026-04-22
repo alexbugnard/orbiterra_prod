@@ -2,8 +2,8 @@
 // Samples every 50km, reverse geocodes via Nominatim, stores [[distM, countryName], ...]
 // Usage: node scripts/backfill-countries.mjs
 
-const SUPABASE_URL = 'https://ynskuvlfcozwoofffabt.supabase.co'
-const SUPABASE_KEY = 'SUPABASE_SERVICE_KEY_REMOVED'
+const SUPABASE_URL = process.env.SUPABASE_URL
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
 const SAMPLE_M = 50_000  // one geocode per 50km
 const RATE_MS  = 1100    // Nominatim 1 req/s
 
