@@ -16,12 +16,13 @@ interface ElevationProfileProps {
   gainLabel?: string
   riddenUpToM?: number
   showStats?: boolean
+  countries?: [number, string][] // [distanceM, countryName]
 }
 
 const H = 116
 const PAD = { top: 34, right: 8, bottom: 20, left: 36 }
 
-export function ElevationProfile({ points, hoveredDistance, onHoverDistance, markers = [], gainLabel = 'm gain', riddenUpToM, showStats = true }: ElevationProfileProps) {
+export function ElevationProfile({ points, hoveredDistance, onHoverDistance, markers = [], gainLabel = 'm gain', riddenUpToM, showStats = true, countries }: ElevationProfileProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(400)
 
@@ -61,10 +62,16 @@ export function ElevationProfile({ points, hoveredDistance, onHoverDistance, mar
   const areaD = `${pathD} L${toX(maxDist).toFixed(1)},${(PAD.top + innerH).toFixed(1)} L${PAD.left},${(PAD.top + innerH).toFixed(1)} Z`
 
   const yTicks = [minAlt, minAlt + altRange / 2, maxAlt]
-  const xTickCount = Math.min(4, Math.floor(maxDist / 1000))
+
+  // Round x-axis interval to a nice number (500, 1000, 2000, 2500, 5000 km…)
+  const NICE = [500, 1000, 2000, 2500, 5000, 10000]
+  const maxDistKm = maxDist / 1000
+  const targetTicks = Math.min(5, Math.max(2, Math.floor(innerW / 80)))
+  const rawIntervalKm = maxDistKm / (targetTicks + 1)
+  const intervalKm = NICE.find(n => n >= rawIntervalKm) ?? NICE[NICE.length - 1]
   const xTicks: number[] = []
-  for (let i = 1; i <= xTickCount; i++) {
-    xTicks.push((maxDist / (xTickCount + 1)) * i)
+  for (let km = intervalKm; km < maxDistKm - intervalKm * 0.3; km += intervalKm) {
+    xTicks.push(km * 1000)
   }
 
   const riddenClipW = riddenUpToM != null
@@ -74,6 +81,7 @@ export function ElevationProfile({ points, hoveredDistance, onHoverDistance, mar
   // Compute indicator values when hoveredDistance is set
   let indicatorX: number | null = null
   let indicatorY: number | null = null
+  let indicatorAlt: number | null = null
   if (hoveredDistance != null) {
     const clamped = Math.max(0, Math.min(maxDist, hoveredDistance))
     indicatorX = toX(clamped)
@@ -84,6 +92,7 @@ export function ElevationProfile({ points, hoveredDistance, onHoverDistance, mar
       if (diff < minDiff) { minDiff = diff; nearest = p }
     }
     indicatorY = toY(nearest[1])
+    indicatorAlt = nearest[1]
   }
 
   function getDistFromClientX(clientX: number, rect: DOMRect): number {
@@ -114,8 +123,25 @@ export function ElevationProfile({ points, hoveredDistance, onHoverDistance, mar
     onHoverDistance?.(null)
   }
 
+  // Country at current hover position (or at start if no hover)
+  let currentCountry: string | null = null
+  if (countries && countries.length > 0) {
+    const dist = hoveredDistance ?? 0
+    let match = countries[0][1]
+    for (const [d, name] of countries) {
+      if (d <= dist) match = name
+      else break
+    }
+    currentCountry = match
+  }
+
   return (
     <div ref={containerRef}>
+      {countries && countries.length > 0 && (
+        <div className="mb-1 text-xs font-semibold text-cyan-400 tracking-wide">
+          {currentCountry ?? countries[0][1]}
+        </div>
+      )}
       {showStats && <div className="flex items-center justify-between mb-1.5 text-xs text-slate-500">
         <span>↑ {Math.round(totalGain).toLocaleString()} {gainLabel}</span>
         <span>{Math.round(minAlt)} – {Math.round(maxAlt)} m</span>
@@ -223,19 +249,24 @@ export function ElevationProfile({ points, hoveredDistance, onHoverDistance, mar
         })()}
 
         {/* Hover indicator */}
-        {indicatorX != null && indicatorY != null && (
-          <>
-            <line
-              x1={indicatorX} y1={PAD.top}
-              x2={indicatorX} y2={PAD.top + innerH}
-              stroke="#f97316" strokeWidth="1.5" opacity="0.8"
-            />
-            <circle
-              cx={indicatorX} cy={indicatorY}
-              r={3} fill="#f97316" opacity="0.9"
-            />
-          </>
-        )}
+        {indicatorX != null && indicatorY != null && indicatorAlt != null && (() => {
+          const label = `${Math.round(indicatorAlt)} m`
+          const tipW = label.length * 6 + 10
+          const tipH = 16
+          const tipX = indicatorX + 6 + tipW > PAD.left + innerW ? indicatorX - tipW - 6 : indicatorX + 6
+          const tipY = Math.max(PAD.top, indicatorY - tipH / 2)
+          return (
+            <>
+              <line x1={indicatorX} y1={PAD.top} x2={indicatorX} y2={PAD.top + innerH}
+                stroke="#f97316" strokeWidth="1.5" opacity="0.8" />
+              <circle cx={indicatorX} cy={indicatorY} r={3} fill="#f97316" opacity="0.9" />
+              <rect x={tipX} y={tipY} width={tipW} height={tipH} rx={3}
+                fill="#0f172a" stroke="#f97316" strokeWidth="0.8" opacity="0.92" />
+              <text x={tipX + tipW / 2} y={tipY + 11} textAnchor="middle" fontSize="9.5"
+                fontWeight="600" fill="#f97316">{label}</text>
+            </>
+          )
+        })()}
       </svg>
     </div>
   )

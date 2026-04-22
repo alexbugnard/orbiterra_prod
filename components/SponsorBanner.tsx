@@ -10,6 +10,7 @@ const SPONSORS = [
   { name: 'GripGrab', logo: '/sponsors/gripgrab-logo.png', url: 'https://www.gripgrab.com' },
   { name: 'ICON OUTDOOR', logo: '/sponsors/icon-outdoor-logo.webp', url: 'https://icon-outdoor.ch/' },
   { name: 'bücher&walt', logo: '/sponsors/bucherwalt-logo.png', url: 'https://www.bucher-walt.ch' },
+  { name: 'Môlechaux Sports Team', logo: '/sponsors/mst.png', url: 'https://www.instagram.com/molechaux_sports_team/' },
 ]
 
 interface Props {

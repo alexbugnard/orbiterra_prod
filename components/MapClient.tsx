@@ -50,6 +50,7 @@ interface PlannedRoute {
   coordinates: [number, number][]
   color: string
   elevation: [number, number][] | null
+  countries: [number, string][] | null
 }
 
 interface Video {
@@ -85,12 +86,13 @@ interface MapClientProps {
   trips: Trip[]
   waypoints: Waypoint[]
   plannedRoutes: PlannedRoute[]
+  currentTz?: string | null
   videos: Video[]
   locale: string
   externalHover?: ExternalHover
   stats?: Stats | null
 }
 
-export function MapClient({ trips, waypoints, plannedRoutes, videos, locale, externalHover, stats }: MapClientProps) {
-  return <Map trips={trips} waypoints={waypoints} plannedRoutes={plannedRoutes} videos={videos} locale={locale} externalHover={externalHover} stats={stats} />
+export function MapClient({ trips, waypoints, plannedRoutes, videos, locale, externalHover, stats, currentTz }: MapClientProps) {
+  return <Map trips={trips} waypoints={waypoints} plannedRoutes={plannedRoutes} videos={videos} locale={locale} externalHover={externalHover} stats={stats} currentTz={currentTz} />
 }

@@ -10,19 +10,30 @@ function haversineM(lat1: number, lng1: number, lat2: number, lng2: number): num
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
-async function fetchElevation(locations: { latitude: number; longitude: number }[], timeoutMs = 25000) {
+// opentopodata.org ASTER dataset — global 30m coverage, 100 locations per request
+async function fetchElevation(
+  locations: { latitude: number; longitude: number }[],
+  timeoutMs = 25000,
+): Promise<{ latitude: number; longitude: number; elevation: number }[]> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
-    const res = await fetch('https://api.open-elevation.com/api/v1/lookup', {
+    const locationStr = locations.map((l) => `${l.latitude},${l.longitude}`).join('|')
+    const res = await fetch('https://api.opentopodata.org/v1/aster30m', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ locations }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ locations: locationStr }),
       signal: controller.signal,
     })
     clearTimeout(timer)
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    return await res.json()
+    const data = await res.json()
+    if (data.status !== 'OK' || !data.results?.length) throw new Error('bad response')
+    return data.results.map((r: any) => ({
+      latitude: r.location.lat,
+      longitude: r.location.lng,
+      elevation: r.elevation ?? 0,
+    }))
   } finally {
     clearTimeout(timer)
   }
@@ -37,8 +48,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid coordinates' }, { status: 400 })
   }
 
-  // Sample to max 100 points — open-elevation demo server rejects larger batches
-  const MAX = 100
+  // Sample to 100 points (opentopodata limit per request)
+  const MAX = 99
   const step = Math.max(1, Math.ceil(coordinates.length / MAX))
   const sampled: [number, number][] = []
   for (let i = 0; i < coordinates.length; i += step) sampled.push(coordinates[i])
@@ -49,14 +60,10 @@ export async function POST(req: NextRequest) {
 
   console.log(`[elevation] fetching ${locations.length} points for route ${routeId ?? 'unknown'}`)
 
-  // Try up to 2 times (the demo server is flaky)
   let lastError: unknown
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
-      const data = await fetchElevation(locations)
-      const results: { latitude: number; longitude: number; elevation: number }[] = data.results
-
-      if (!results?.length) throw new Error('empty results')
+      const results = await fetchElevation(locations)
 
       let cumDist = 0
       const elevation: [number, number][] = []
@@ -70,7 +77,6 @@ export async function POST(req: NextRequest) {
         elevation.push([cumDist, results[i].elevation])
       }
 
-      // Persist to DB so future page loads skip the fetch
       if (routeId) {
         const supabase = createSupabaseClient()
         await supabase.from('planned_routes').update({ elevation }).eq('id', routeId)
@@ -81,7 +87,7 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       lastError = err
       console.warn(`[elevation] attempt ${attempt} failed:`, err)
-      if (attempt < 2) await new Promise(r => setTimeout(r, 2000))
+      if (attempt < 2) await new Promise((r) => setTimeout(r, 2000))
     }
   }
 

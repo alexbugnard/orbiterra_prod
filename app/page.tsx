@@ -5,6 +5,9 @@ import Image from 'next/image'
 import { GlobeMap } from '@/components/GlobeMap'
 import { CountUp } from '@/components/CountUp'
 import { AnimatedLogo, AnimatedButton } from '@/components/HeroAnimated'
+import { LocalTime } from '@/components/LocalTime'
+// @ts-ignore
+import tzlookup from 'tz-lookup'
 
 async function getSiteContent(): Promise<Record<string, string>> {
   const supabase = createSupabaseClient()
@@ -90,21 +93,28 @@ async function getStats() {
     riddenCutoff = maxIndex > 0 ? Math.round((maxIndex / (planned.length - 1)) * (SAMPLE_PTS - 1)) : 0
   }
 
-  return { totalKm, rideCount, progress, routeCoords, riddenCutoff }
+  // Current position: last ridden point on the planned route
+  let currentTz: string | null = null
+  if (routeCoords.length > 0 && riddenCutoff > 0) {
+    const [lng, lat] = routeCoords[riddenCutoff]
+    try { currentTz = tzlookup(lat, lng) } catch {}
+  }
+
+  return { totalKm, rideCount, progress, routeCoords, riddenCutoff, currentTz }
 }
 
 export default async function LandingPage() {
   const t = await getTranslations('landing')
   const content = await getSiteContent()
   const locale = await getLocale()
-  const { totalKm, rideCount, progress, routeCoords, riddenCutoff } = await getStats()
+  const { totalKm, rideCount, progress, routeCoords, riddenCutoff, currentTz } = await getStats()
 
   const description = locale === 'fr'
     ? content.description_fr
     : content.description_en
 
   return (
-    <main className="relative min-h-[calc(100vh-57px)] flex flex-col bg-slate-900">
+    <main className="relative h-[calc(100vh-57px)] flex flex-col bg-slate-900 overflow-hidden">
 
       {/* Globe — absolute right, vertically centered, full page height */}
       {routeCoords.length > 1 && (
@@ -116,7 +126,7 @@ export default async function LandingPage() {
       )}
 
       {/* Hero */}
-      <div className="relative flex flex-col items-center justify-center flex-1 px-6 py-24 text-center overflow-hidden">
+      <div className="relative flex flex-col items-center justify-center flex-1 px-6 py-8 md:py-24 text-center overflow-hidden">
         {/* Background image */}
         <Image
           src="/image_landing_page.png"
@@ -130,36 +140,36 @@ export default async function LandingPage() {
 
         {/* Content — centered as before */}
         <div className="relative z-10 max-w-2xl">
-          <div className="mb-8">
+          <div className="mb-4 md:mb-8">
             <AnimatedLogo>
               <Image
                 src="/logo/Capture d'écran 2026-04-20 085244.png"
                 alt="OrbiTerra"
                 width={192}
                 height={192}
-                className="mx-auto rounded-full bg-white/90 p-2 shadow-xl"
+                className="mx-auto rounded-full bg-white/90 p-2 shadow-xl w-24 h-24 md:w-48 md:h-48"
                 loading="eager"
                 priority
               />
             </AnimatedLogo>
           </div>
 
-          <h1 className="text-5xl md:text-6xl font-extrabold text-white mb-4 leading-tight tracking-tight">
+          <h1 className="text-4xl md:text-6xl font-extrabold text-white mb-2 md:mb-4 leading-tight tracking-tight">
             Orbi<span className="text-orange-400">Terra</span>
           </h1>
 
-          <p className="text-xl text-slate-300 font-medium mb-4">
+          <p className="text-base md:text-xl text-slate-300 font-medium mb-2 md:mb-4">
             {content.title || 'Le voyage de Vincent'}
           </p>
 
-          <p className="text-lg text-slate-400 max-w-xl mx-auto mb-10 leading-relaxed">
+          <p className="text-sm md:text-lg text-slate-400 max-w-xl mx-auto mb-6 md:mb-10 leading-relaxed">
             {description || 'Follow my bike trips around the world, with photos and route details.'}
           </p>
 
           <AnimatedButton>
             <Link
               href="/map"
-              className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-all shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 hover:-translate-y-0.5"
+              className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 md:px-8 md:py-4 rounded-xl font-semibold text-base md:text-lg transition-all shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 hover:-translate-y-0.5"
             >
               {t('cta')}
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -167,38 +177,47 @@ export default async function LandingPage() {
               </svg>
             </Link>
           </AnimatedButton>
+
+          {/* Globe — mobile only, below button */}
+          {routeCoords.length > 1 && (
+            <div className="mt-4 flex md:hidden justify-center pointer-events-none">
+              <div className="w-36 h-36 opacity-90">
+                <GlobeMap coords={routeCoords} riddenCutoff={riddenCutoff} />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Route map + stats */}
       {rideCount > 0 && (
-        <div className="border-t border-slate-800 bg-slate-900/80">
-          <div className="max-w-2xl mx-auto px-6 py-8">
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-8 text-center">
+        <div className="border-t border-slate-800 bg-slate-900/80 flex-shrink-0">
+          <div className="max-w-2xl mx-auto px-6 py-4 md:py-8">
+            <div className="space-y-3 md:space-y-6">
+              <div className="grid grid-cols-2 gap-4 md:gap-8 text-center">
                 <div>
-                  <div className="text-3xl font-bold text-white"><CountUp value={totalKm} /></div>
-                  <div className="text-sm text-slate-500 mt-1">{t('kmRidden')}</div>
+                  <div className="text-2xl md:text-3xl font-bold text-white"><CountUp value={totalKm} /></div>
+                  <div className="text-xs md:text-sm text-slate-500 mt-0.5">{t('kmRidden')}</div>
                 </div>
                 <div>
-                  <div className="text-3xl font-bold text-white"><CountUp value={rideCount} duration={1400} /></div>
-                  <div className="text-sm text-slate-500 mt-1">{t('ridesTracked')}</div>
+                  <div className="text-2xl md:text-3xl font-bold text-white"><CountUp value={rideCount} duration={1400} /></div>
+                  <div className="text-xs md:text-sm text-slate-500 mt-0.5">{t('ridesTracked')}</div>
                 </div>
               </div>
 
               {progress && (
                 <div>
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between mb-1.5 md:mb-2">
                     <span className="text-xs text-slate-500 uppercase tracking-wider">{t('routeProgress')}</span>
-                    <span className="text-sm font-bold text-cyan-400">{progress.pct}%</span>
+                    <span className="text-xs md:text-sm font-bold text-cyan-400">{progress.pct}%</span>
                   </div>
-                  <div className="w-full h-2.5 bg-slate-700 rounded-full overflow-hidden">
+                  <div className="w-full h-2 md:h-2.5 bg-slate-700 rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full bg-gradient-to-r from-orange-500 to-cyan-400"
                       style={{ width: `${progress.pct}%` }}
                     />
                   </div>
-                  <div className="flex justify-between mt-2 text-xs text-slate-500">
+                  <div className="flex justify-between mt-1.5 text-xs text-slate-500">
                     <span>Prudhoe Bay</span>
                     <span>{progress.kmLeft.toLocaleString()} km {t('remaining')}</span>
                     <span>Ushuaia</span>

@@ -9,6 +9,7 @@ import { useIsMobile } from '@/lib/useIsMobile'
 import { computeElevationGain } from '@/lib/strava'
 import { WeatherLayer } from './WeatherLayer'
 import { SponsorBanner } from './SponsorBanner'
+import { LocalTime } from './LocalTime'
 
 interface Trip {
   id: string
@@ -43,6 +44,7 @@ interface PlannedRoute {
   coordinates: [number, number][]
   color: string
   elevation: [number, number][] | null
+  countries: [number, string][] | null
 }
 
 interface Video {
@@ -82,6 +84,7 @@ interface MapProps {
   locale: string
   externalHover?: ExternalHover
   stats?: Stats | null
+  currentTz?: string | null
 }
 
 function toDateStr(iso: string) {
@@ -252,7 +255,7 @@ function computeRiddenDistM(coords: [number, number][], mask: boolean[]): number
 
 // ──────────────────────────────────────────────────────────────────────────────
 
-export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalHover, stats }: MapProps) {
+export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalHover, stats, currentTz }: MapProps) {
   const t = useTranslations('map')
   const isMobile = useIsMobile()
   const mapRef = useRef<LeafletMap | null>(null)
@@ -458,11 +461,8 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
 
     // Planned route lines
     plannedLinesRef.current.forEach(({ segLines, routeColor }) => {
-      const unriddenColor = basemap === 'topo' ? '#1d4ed8' : routeColor
-      const riddenLineColor = basemap === 'topo' ? '#dc2626' : '#f97316'
-      segLines.forEach(({ line, ridden }) => {
-        line.setStyle({ color: ridden ? riddenLineColor : unriddenColor })
-      })
+      const color = basemap === 'topo' ? '#1d4ed8' : routeColor
+      segLines.forEach(({ line }) => line.setStyle({ color }))
     })
 
     // Weather icons
@@ -766,6 +766,7 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
       mapRef.current = map
 
       const glowLines: Polyline[] = []
+      const tripHitZones: any[] = []
 
       trips.forEach((trip, index) => {
         if (trip.coordinates.length < 2) return
@@ -780,7 +781,8 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
         // Invisible wide hit zone — captures hover/click without affecting visual width
         const hitZone = L.polyline(latLngs, { color: '#f97316', weight: 20, opacity: 0, smoothFactor: 0 }).addTo(map)
 
-        hitZone.on('click', () => selectTrip(index))
+        hitZone.on('click', (e: any) => { L.DomEvent.stopPropagation(e); selectTrip(index) })
+        tripHitZones.push(hitZone)
 
         hitZone.on('mouseover', () => {
           if (selectedTripIndexRef.current === null) line.setStyle({ weight: 6, opacity: 1 })
@@ -819,12 +821,10 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
         const segLines: { line: any; ridden: boolean }[] = []
 
         for (const seg of segments) {
+          if (seg.ridden) continue
           const latLngs = seg.coords.map(([lng, lat]) => [lat, lng] as [number, number])
-          const line = L.polyline(latLngs, seg.ridden
-            ? { color: '#f97316', weight: 3, opacity: 0.9, interactive: false }
-            : { color: route.color, weight: 2, opacity: 0.7, dashArray: '8, 10', interactive: false }
-          ).addTo(map)
-          segLines.push({ line, ridden: seg.ridden })
+          const line = L.polyline(latLngs, { color: route.color, weight: 2, opacity: 0.7, dashArray: '8, 10', interactive: false }).addTo(map)
+          segLines.push({ line, ridden: false })
         }
 
         plannedLinesRef.current.push({ segLines, routeColor: route.color })
@@ -832,7 +832,8 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
         // Invisible hit zone for click
         const hitLatLngs = route.coordinates.map(([lng, lat]) => [lat, lng] as [number, number])
         const hitZone = L.polyline(hitLatLngs, { color: route.color, weight: 16, opacity: 0 }).addTo(map)
-        hitZone.on('click', () => {
+        hitZone.on('click', (e: any) => {
+          L.DomEvent.stopPropagation(e)
           setSelectedRouteIndex(routeIdx)
           selectedRouteIndexRef.current = routeIdx
           routeCumDistsRef.current = buildCumDists(route.coordinates)
@@ -877,6 +878,20 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
           setHoveredRouteDistanceRef.current(null)
         })
       }
+
+      // Ensure trip hit zones are above planned route hit zones
+      tripHitZones.forEach(hz => hz.bringToFront())
+
+      // Close planned route panel on map click
+      map.on('click', () => {
+        if (selectedRouteIndexRef.current !== null) {
+          setSelectedRouteIndex(null)
+          setRouteElevation(null)
+          setHoveredRouteDistance(null)
+          selectedRouteIndexRef.current = null
+          routeCumDistsRef.current = null
+        }
+      })
 
       // Camera markers
       const cameraIcon = L.divIcon({
@@ -1180,7 +1195,7 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
       </div>}
 
       {/* Top-left map controls */}
-      {externalHover === undefined && !aboutOpen && (
+      {externalHover === undefined && !aboutOpen && !(isMobile && selectedRouteIndex !== null) && (
         <div className="absolute top-4 left-4 z-[9999] flex items-center gap-2">
           <button
             onClick={() => setShowWeather((v) => !v)}
@@ -1262,6 +1277,7 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
                 onHoverDistance={setHoveredRouteDistance}
                 gainLabel="m dénivelé+"
                 showStats={false}
+                countries={routePanelData.route.countries ?? undefined}
               />
             ) : (
               <div className="text-xs text-slate-500 text-center py-3">Profil d&apos;altitude non disponible</div>
@@ -1272,59 +1288,105 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
 
       {/* Stats overlay — hidden on mobile when a trip panel is open */}
       {stats && !(isMobile && selectedTripIndex !== null) && (
-        <div
-          className="absolute bottom-8 left-2 right-2 md:left-4 md:right-auto z-[1000] rounded-xl px-4 md:px-5 py-3 flex items-center gap-4 md:gap-6 overflow-x-auto"
-          style={{ background: 'rgba(15,23,42,0.85)', backdropFilter: 'blur(8px)', border: '1px solid rgba(51,65,85,0.8)', scrollbarWidth: 'none' }}
-        >
-          <div>
-            <div className="text-xs text-slate-500 uppercase tracking-wider">{stats.labels.rides}</div>
-            <div className="text-lg font-bold text-white">{stats.rides}</div>
-          </div>
-          <div className="w-px h-8 bg-slate-700" />
-          <div>
-            <div className="text-xs text-slate-500 uppercase tracking-wider">{stats.labels.distance}</div>
-            <div className="text-lg font-bold text-white">{stats.totalKm.toLocaleString()} {stats.labels.km}</div>
-          </div>
-          <div className="w-px h-8 bg-slate-700" />
-          <div>
-            <div className="text-xs text-slate-500 uppercase tracking-wider">{stats.labels.elevation}</div>
-            <div className="text-lg font-bold text-white">↑ {stats.totalElevationGain.toLocaleString()} {stats.labels.km === 'km' ? 'm' : 'm'}</div>
-          </div>
-          {stats.countries > 0 && (
-            <>
-              <div className="w-px h-8 bg-slate-700" />
+        isMobile ? (
+          /* Mobile: compact 2-row grid */
+          <div
+            className="absolute bottom-4 left-2 right-2 z-[1000] rounded-xl px-3 py-2"
+            style={{ background: 'rgba(15,23,42,0.90)', backdropFilter: 'blur(8px)', border: '1px solid rgba(51,65,85,0.8)' }}
+          >
+            <div className="grid grid-cols-4 gap-x-2 gap-y-1 text-center">
               <div>
-                <div className="text-xs text-slate-500 uppercase tracking-wider">{stats.labels.countries}</div>
-                <div className="text-lg font-bold text-white">{stats.countries}</div>
+                <div className="text-[9px] text-slate-500 uppercase leading-tight">{stats.labels.rides}</div>
+                <div className="text-sm font-bold text-white leading-tight">{stats.rides}</div>
               </div>
-            </>
-          )}
-          {stats.progress && (
-            <>
-              <div className="w-px h-8 bg-slate-700" />
               <div>
-                <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">{stats.labels.americasCrossing}</div>
-                <div className="flex items-center gap-3">
-                  <div className="w-28 h-2 bg-slate-700 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${stats.progress.pct}%`, background: '#22d3ee' }} />
-                  </div>
-                  <div className="text-sm font-bold text-cyan-400">{stats.progress.pct}%</div>
+                <div className="text-[9px] text-slate-500 uppercase leading-tight">{stats.labels.km}</div>
+                <div className="text-sm font-bold text-white leading-tight">{stats.totalKm.toLocaleString()}</div>
+              </div>
+              <div>
+                <div className="text-[9px] text-slate-500 uppercase leading-tight">↑ m</div>
+                <div className="text-sm font-bold text-white leading-tight">{stats.totalElevationGain.toLocaleString()}</div>
+              </div>
+              {stats.countries > 0 && (
+                <div>
+                  <div className="text-[9px] text-slate-500 uppercase leading-tight">{stats.labels.countries}</div>
+                  <div className="text-sm font-bold text-white leading-tight">{stats.countries}</div>
                 </div>
+              )}
+            </div>
+            {stats.progress && (
+              <div className="mt-1.5 flex items-center gap-2">
+                <div className="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full" style={{ width: `${stats.progress.pct}%`, background: '#22d3ee' }} />
+                </div>
+                <div className="text-xs font-bold text-cyan-400 whitespace-nowrap">{stats.progress.pct}% — {stats.progress.kmLeft.toLocaleString()} {stats.labels.km}</div>
               </div>
-              <div className="w-px h-8 bg-slate-700" />
-              <div>
-                <div className="text-xs text-slate-500 uppercase tracking-wider">{stats.labels.left}</div>
-                <div className="text-lg font-bold text-white">{stats.progress.kmLeft.toLocaleString()} {stats.labels.km}</div>
-              </div>
-            </>
-          )}
-        </div>
+            )}
+          </div>
+        ) : (
+          /* Desktop: horizontal scrollable row */
+          <div
+            className="absolute bottom-8 left-4 z-[1000] rounded-xl px-5 py-3 flex items-center gap-6 overflow-x-auto"
+            style={{ background: 'rgba(15,23,42,0.85)', backdropFilter: 'blur(8px)', border: '1px solid rgba(51,65,85,0.8)', scrollbarWidth: 'none' }}
+          >
+            <div>
+              <div className="text-xs text-slate-500 uppercase tracking-wider">{stats.labels.rides}</div>
+              <div className="text-lg font-bold text-white">{stats.rides}</div>
+            </div>
+            <div className="w-px h-8 bg-slate-700" />
+            <div>
+              <div className="text-xs text-slate-500 uppercase tracking-wider">{stats.labels.distance}</div>
+              <div className="text-lg font-bold text-white">{stats.totalKm.toLocaleString()} {stats.labels.km}</div>
+            </div>
+            <div className="w-px h-8 bg-slate-700" />
+            <div>
+              <div className="text-xs text-slate-500 uppercase tracking-wider">{stats.labels.elevation}</div>
+              <div className="text-lg font-bold text-white">↑ {stats.totalElevationGain.toLocaleString()} m</div>
+            </div>
+            {stats.countries > 0 && (
+              <>
+                <div className="w-px h-8 bg-slate-700" />
+                <div>
+                  <div className="text-xs text-slate-500 uppercase tracking-wider">{stats.labels.countries}</div>
+                  <div className="text-lg font-bold text-white">{stats.countries}</div>
+                </div>
+              </>
+            )}
+            {stats.progress && (
+              <>
+                <div className="w-px h-8 bg-slate-700" />
+                <div>
+                  <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">{stats.labels.americasCrossing}</div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-28 h-2 bg-slate-700 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${stats.progress.pct}%`, background: '#22d3ee' }} />
+                    </div>
+                    <div className="text-sm font-bold text-cyan-400">{stats.progress.pct}%</div>
+                  </div>
+                </div>
+                <div className="w-px h-8 bg-slate-700" />
+                <div>
+                  <div className="text-xs text-slate-500 uppercase tracking-wider">{stats.labels.left}</div>
+                  <div className="text-lg font-bold text-white">{stats.progress.kmLeft.toLocaleString()} {stats.labels.km}</div>
+                </div>
+              </>
+            )}
+          </div>
+        )
       )}
 
       <SponsorBanner
-        panelOpen={!isMobile && (selectedTrip !== null || selectedRouteIndex !== null)}
-        hidden={isMobile && selectedTrip !== null}
+        hidden={selectedTrip !== null || selectedRouteIndex !== null}
       />
+
+      {currentTz && !(selectedTrip !== null || selectedRouteIndex !== null) && (
+        <div
+          className="absolute z-[1000] flex flex-col items-center px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-900/85 backdrop-blur-sm"
+          style={{ top: '71px', right: '16px' }}
+        >
+          <LocalTime tz={currentTz} />
+        </div>
+      )}
 
     </div>
   )

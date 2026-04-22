@@ -3,6 +3,8 @@ import { getLocale, getTranslations } from 'next-intl/server'
 import { MapClient } from '@/components/MapClient'
 import { SyncTrigger } from '@/components/SyncTrigger'
 import { computeElevationGain } from '@/lib/strava'
+// @ts-ignore
+import tzlookup from 'tz-lookup'
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371
@@ -73,7 +75,7 @@ async function getMapData() {
       .select('id, lat, lng, url_large, title'),
     supabase
       .from('planned_routes')
-      .select('id, name, coordinates, color, elevation'),
+      .select('id, name, coordinates, color, elevation, countries'),
     supabase
       .from('videos')
       .select('id, youtube_id, title, published_at')
@@ -107,6 +109,7 @@ async function getMapData() {
     coordinates: r.coordinates as [number, number][],
     color: r.color,
     elevation: (r.elevation ?? null) as [number, number][] | null,
+    countries: (r.countries ?? null) as [number, string][] | null,
   }))
 
   const formattedVideos = (videos ?? []).map((v: any) => ({
@@ -172,10 +175,17 @@ export default async function MapPage() {
     },
   } : null
 
+  // Timezone at Vincent's current position (last ridden point on planned route)
+  let currentTz: string | null = null
+  if (mainPlannedRoute && mainCutoff > 0) {
+    const [lng, lat] = mainPlannedRoute.coordinates[mainCutoff]
+    try { currentTz = tzlookup(lat, lng) } catch {}
+  }
+
   return (
     <div className="relative h-[calc(100vh-57px)]">
       <SyncTrigger />
-      <MapClient trips={trips} waypoints={waypoints} plannedRoutes={plannedRoutes} videos={videos} locale={locale} stats={stats} />
+      <MapClient trips={trips} waypoints={waypoints} plannedRoutes={plannedRoutes} videos={videos} locale={locale} stats={stats} currentTz={currentTz} />
     </div>
   )
 }
