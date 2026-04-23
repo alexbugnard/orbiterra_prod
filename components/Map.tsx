@@ -91,6 +91,23 @@ interface MapProps {
   vincentLat?: number | null
   vincentLng?: number | null
   vincentLastDate?: string | null
+  routeCities?: RouteCity[]
+}
+
+interface RouteCity {
+  id: string
+  name: string
+  country: string
+  lat: number
+  lng: number
+  wiki_slug: string
+}
+
+interface WikiSummary {
+  title: string
+  extract: string
+  thumbnail?: { source: string }
+  content_urls?: { desktop: { page: string } }
 }
 
 function toDateStr(iso: string) {
@@ -261,7 +278,7 @@ function computeRiddenDistM(coords: [number, number][], mask: boolean[]): number
 
 // ──────────────────────────────────────────────────────────────────────────────
 
-export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalHover, stats, currentTz, vincentLat, vincentLng, vincentLastDate }: MapProps) {
+export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalHover, stats, currentTz, vincentLat, vincentLng, vincentLastDate, routeCities = [] }: MapProps) {
   const t = useTranslations('map')
   const vincentMarkerLabel = t('vincentMarkerLabel')
   const vincentLastSeenLabel = t('vincentLastSeen')
@@ -298,6 +315,9 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null)
   const [hoveredDistance, setHoveredDistance] = useState<number | null>(null)
   const [hoveredRouteDistance, setHoveredRouteDistance] = useState<number | null>(null)
+  const [selectedCity, setSelectedCity] = useState<RouteCity | null>(null)
+  const [cityWiki, setCityWiki] = useState<WikiSummary | null>(null)
+  const [cityWikiLoading, setCityWikiLoading] = useState(false)
   const hoverRouteMarkerRef = useRef<any>(null)
   const selectedRouteIndexRef = useRef<number | null>(null)
   const routeCumDistsRef = useRef<number[] | null>(null)
@@ -434,6 +454,21 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
       weatherLayerRef.current.load(map).then(() => weatherLayerRef.current!.show(map))
     }
   }, [showWeather])
+
+  useEffect(() => {
+    if (!selectedCity) { setCityWiki(null); return }
+    setCityWikiLoading(true)
+    setCityWiki(null)
+    const lang = locale === 'en' ? 'en' : 'fr'
+    const tryFetch = (l: string) =>
+      fetch(`https://${l}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(selectedCity.wiki_slug)}`)
+        .then(r => r.ok ? r.json() : Promise.reject(r.status))
+    tryFetch(lang)
+      .catch(() => lang !== 'en' ? tryFetch('en') : Promise.reject())
+      .then((data: WikiSummary) => setCityWiki(data))
+      .catch(() => {})
+      .finally(() => setCityWikiLoading(false))
+  }, [selectedCity, locale])
 
   useEffect(() => {
     const map = mapRef.current
@@ -967,6 +1002,41 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
       map.on('zoomend', updateEggVisibility)
       updateEggVisibility()
 
+      // City markers (visible from zoom 4)
+      const CITY_ZOOM = 4
+      const cityIcon = L.divIcon({
+        html: `<div style="
+          width:20px;height:20px;border-radius:50%;
+          background:rgba(15,23,42,0.88);
+          border:1.5px solid rgba(148,163,184,0.6);
+          display:flex;align-items:center;justify-content:center;
+          font-size:11px;line-height:1;
+          box-shadow:0 2px 6px rgba(0,0,0,0.5);
+          cursor:pointer;
+        ">🏙️</div>`,
+        className: '',
+        iconSize: [20, 20],
+        iconAnchor: [10, 10],
+      })
+      const cityMarkers: any[] = []
+      for (const city of routeCities) {
+        const m = L.marker([city.lat, city.lng], { icon: cityIcon, zIndexOffset: 500 })
+        m.on('click', () => setSelectedCity(city))
+        m.bindTooltip(`<span style="font-size:11px;font-weight:600">${city.name}</span>`, {
+          direction: 'top', offset: [0, -12], opacity: 1, className: 'weather-tooltip',
+        })
+        cityMarkers.push(m)
+      }
+      function updateCityVisibility() {
+        const z = map.getZoom()
+        cityMarkers.forEach(m => {
+          if (z >= CITY_ZOOM) { if (!map.hasLayer(m)) m.addTo(map) }
+          else { if (map.hasLayer(m)) m.remove() }
+        })
+      }
+      map.on('zoomend', updateCityVisibility)
+      updateCityVisibility()
+
       // Live position marker
       if (vincentLat !== null && vincentLat !== undefined && vincentLng !== null && vincentLng !== undefined) {
         const dateLabel = vincentLastDate
@@ -1274,6 +1344,61 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
               <span className="hidden md:inline">Météo</span>
             </button>
           )}
+        </div>
+      )}
+
+      {/* City Wikipedia panel */}
+      {selectedCity && (
+        <div
+          className="absolute bottom-4 right-4 z-[1100] w-80 max-w-[calc(100vw-2rem)] rounded-2xl overflow-hidden"
+          style={{ background: 'rgba(15,23,42,0.97)', backdropFilter: 'blur(12px)', border: '1px solid rgba(51,65,85,0.8)', boxShadow: '0 24px 64px rgba(0,0,0,0.5)' }}
+        >
+          {/* Header */}
+          <div className="flex items-start justify-between px-4 pt-4 pb-2">
+            <div>
+              <div className="text-base font-bold text-slate-100">{selectedCity.name}</div>
+              <div className="text-xs text-slate-400 mt-0.5">{selectedCity.country}</div>
+            </div>
+            <button
+              onClick={() => setSelectedCity(null)}
+              className="text-slate-500 hover:text-slate-300 transition-colors ml-3 mt-0.5 flex-shrink-0"
+              style={{ fontSize: 18, lineHeight: 1 }}
+            >×</button>
+          </div>
+
+          {/* Wikipedia content */}
+          <div className="px-4 pb-4">
+            {cityWikiLoading && (
+              <div className="text-xs text-slate-500 py-2">Chargement…</div>
+            )}
+            {!cityWikiLoading && cityWiki && (
+              <>
+                {cityWiki.thumbnail && (
+                  <img
+                    src={cityWiki.thumbnail.source}
+                    alt={selectedCity.name}
+                    className="w-full h-32 object-cover rounded-xl mb-3"
+                  />
+                )}
+                <p className="text-xs text-slate-300 leading-relaxed line-clamp-5">
+                  {cityWiki.extract}
+                </p>
+                {cityWiki.content_urls?.desktop?.page && (
+                  <a
+                    href={cityWiki.content_urls.desktop.page}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 mt-3 text-xs font-semibold text-cyan-400 hover:text-cyan-300 transition-colors"
+                  >
+                    Wikipedia →
+                  </a>
+                )}
+              </>
+            )}
+            {!cityWikiLoading && !cityWiki && (
+              <div className="text-xs text-slate-500 py-2">Aucune information disponible.</div>
+            )}
+          </div>
         </div>
       )}
 

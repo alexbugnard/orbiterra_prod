@@ -82,6 +82,15 @@ interface Stats {
   }
 }
 
+interface RouteCity {
+  id: string
+  name: string
+  country: string
+  lat: number
+  lng: number
+  wiki_slug: string
+}
+
 interface MapClientProps {
   trips: Trip[]
   waypoints: Waypoint[]
@@ -94,8 +103,9 @@ interface MapClientProps {
   vincentLat?: number | null
   vincentLng?: number | null
   vincentLastDate?: string | null
+  routeCities?: RouteCity[]
 }
 
-export function MapClient({ trips, waypoints, plannedRoutes, videos, locale, externalHover, stats, currentTz, vincentLat, vincentLng, vincentLastDate }: MapClientProps) {
-  return <Map trips={trips} waypoints={waypoints} plannedRoutes={plannedRoutes} videos={videos} locale={locale} externalHover={externalHover} stats={stats} currentTz={currentTz} vincentLat={vincentLat} vincentLng={vincentLng} vincentLastDate={vincentLastDate} />
+export function MapClient({ trips, waypoints, plannedRoutes, videos, locale, externalHover, stats, currentTz, vincentLat, vincentLng, vincentLastDate, routeCities }: MapClientProps) {
+  return <Map trips={trips} waypoints={waypoints} plannedRoutes={plannedRoutes} videos={videos} locale={locale} externalHover={externalHover} stats={stats} currentTz={currentTz} vincentLat={vincentLat} vincentLng={vincentLng} vincentLastDate={vincentLastDate} routeCities={routeCities ?? []} />
 }
