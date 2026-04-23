@@ -1,5 +1,5 @@
 -- Batch 5: comprehensive North America coverage along the Pan-American route
-INSERT INTO route_cities (name, country, lat, lng, wiki_slug) ON CONFLICT (name, country) DO NOTHING VALUES
+INSERT INTO route_cities (name, country, lat, lng, wiki_slug) VALUES
 -- ── ALASKA ───────────────────────────────────────────────────────────────────
 ('Anchorage',             'United States',  61.2181, -149.9003, 'Anchorage,_Alaska'),
 ('Palmer',                'United States',  61.5994, -149.1147, 'Palmer,_Alaska'),
@@ -82,4 +82,5 @@ INSERT INTO route_cities (name, country, lat, lng, wiki_slug) ON CONFLICT (name,
 ('Guaymas',               'Mexico',         27.9167, -110.8833, 'Guaymas'),
 ('Los Mochis',            'Mexico',         25.7903,  -108.9872,'Los_Mochis'),
 ('Culiacán',              'Mexico',         24.8091,  -107.3940, 'Culiacán'),
-('Escuinapa',             'Mexico',         22.8333,  -105.7500, 'Escuinapa');
+('Escuinapa',             'Mexico',         22.8333,  -105.7500, 'Escuinapa')
+ON CONFLICT (name, country) DO NOTHING;

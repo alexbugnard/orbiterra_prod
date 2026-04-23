@@ -1,5 +1,5 @@
 -- Batch 4: cities notably on the Pan-American route, not yet in database
-INSERT INTO route_cities (name, country, lat, lng, wiki_slug) ON CONFLICT (name, country) DO NOTHING VALUES
+INSERT INTO route_cities (name, country, lat, lng, wiki_slug) VALUES
 -- ── MEXICO ───────────────────────────────────────────────────────────────────
 ('Ciudad Juárez',         'Mexico',         31.6904,  -106.4245, 'Ciudad_Juárez'),
 ('Chihuahua',             'Mexico',         28.6353,  -106.0889, 'Chihuahua_City'),
@@ -72,4 +72,5 @@ INSERT INTO route_cities (name, country, lat, lng, wiki_slug) ON CONFLICT (name,
 ('Bahía Blanca',          'Argentina',      -38.7183,  -62.2663, 'Bahía_Blanca'),
 ('Puerto Madryn',         'Argentina',      -42.7692,  -65.0385, 'Puerto_Madryn'),
 ('Trelew',                'Argentina',      -43.2489,  -65.3050, 'Trelew'),
-('Viedma',                'Argentina',      -40.8135,  -62.9967, 'Viedma,_Río_Negro');
+('Viedma',                'Argentina',      -40.8135,  -62.9967, 'Viedma,_Río_Negro')
+ON CONFLICT (name, country) DO NOTHING;
