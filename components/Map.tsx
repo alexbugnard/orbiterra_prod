@@ -1069,11 +1069,12 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
       updateCityVisibility()
 
       // POI markers: mountains, passes, lakes (visible from zoom 7)
+      console.log('[POI] routePois count:', routePois.length)
       const POI_ZOOM = 7
       const poiStyle: Record<string, { symbol: string; color: string; border: string }> = {
         mountain: { symbol: '▲', color: '#94a3b8', border: 'rgba(148,163,184,0.6)' },
-        pass:     { symbol: '⛰', color: '#f59e0b', border: 'rgba(245,158,11,0.6)'  },
-        lake:     { symbol: '〜', color: '#38bdf8', border: 'rgba(56,189,248,0.6)'  },
+        pass:     { symbol: '▽', color: '#f59e0b', border: 'rgba(245,158,11,0.6)'  },
+        lake:     { symbol: '~',  color: '#38bdf8', border: 'rgba(56,189,248,0.6)'  },
       }
       const poiMarkers: any[] = []
 
