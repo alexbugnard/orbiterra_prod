@@ -1031,10 +1031,9 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
           cursor:pointer;
         ">?</div>`
 
-      // Offset grows as zoom decreases: at zoom 9 → 26px up/right, at zoom 13+ → 14px
       function cityAnchor(zoom: number): [number, number] {
-        const shift = Math.round(Math.max(0, 13 - zoom) * 5 + 14)
-        return [10 - shift, 10 + shift + 8]
+        const shift = Math.round(Math.max(0, 12 - zoom) * 2 + 4)
+        return [10 - shift, 10 + shift + 2]
       }
 
       function makeCityIcon(zoom: number) {
@@ -1069,34 +1068,41 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
       updateCityVisibility()
 
       // POI markers: mountains, passes, lakes (visible from zoom 7)
-      console.log('[POI] routePois count:', routePois.length)
       const POI_ZOOM = 7
-      const poiStyle: Record<string, { symbol: string; color: string; border: string }> = {
-        mountain: { symbol: '▲', color: '#94a3b8', border: 'rgba(148,163,184,0.6)' },
-        pass:     { symbol: '▽', color: '#f59e0b', border: 'rgba(245,158,11,0.6)'  },
-        lake:     { symbol: '~',  color: '#38bdf8', border: 'rgba(56,189,248,0.6)'  },
+      const poiInner: Record<string, { svg: string; color: string; border: string }> = {
+        mountain: {
+          svg: `<svg width="12" height="10" viewBox="0 0 12 10"><polygon points="6,0 12,10 0,10" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linejoin="round"/></svg>`,
+          color: '#94a3b8', border: 'rgba(148,163,184,0.6)',
+        },
+        pass: {
+          svg: `<svg width="14" height="10" viewBox="0 0 14 10"><polyline points="0,9 4,2 7,6 10,2 14,9" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-linejoin="round"/></svg>`,
+          color: '#f59e0b', border: 'rgba(245,158,11,0.6)',
+        },
+        lake: {
+          svg: `<svg width="12" height="8" viewBox="0 0 12 8"><path d="M0,4 Q3,0 6,4 Q9,8 12,4" fill="none" stroke="#38bdf8" stroke-width="1.5"/></svg>`,
+          color: '#38bdf8', border: 'rgba(56,189,248,0.6)',
+        },
       }
       const poiMarkers: any[] = []
 
       function poiAnchor(zoom: number): [number, number] {
-        const shift = Math.round(Math.max(0, 13 - zoom) * 5 + 14)
-        return [10 - shift, 10 + shift + 8]
+        const shift = Math.round(Math.max(0, 12 - zoom) * 2 + 4)
+        return [10 - shift, 10 + shift + 2]
       }
 
       function makePoiIcon(type: string, zoom: number) {
-        const s = poiStyle[type] ?? poiStyle.mountain
+        const s = poiInner[type] ?? poiInner.mountain
         const anchor = poiAnchor(zoom)
         return L.divIcon({
           html: `<div style="
-            width:20px;height:20px;border-radius:50%;
+            width:22px;height:22px;border-radius:50%;
             background:rgba(15,23,42,0.88);
             border:1.5px solid ${s.border};
             display:flex;align-items:center;justify-content:center;
-            font-size:11px;font-weight:700;color:${s.color};line-height:1;
             box-shadow:0 2px 6px rgba(0,0,0,0.5);cursor:pointer;
-          ">${s.symbol}</div>`,
+          ">${s.svg}</div>`,
           className: '',
-          iconSize: [20, 20],
+          iconSize: [22, 22],
           iconAnchor: anchor,
         })
       }
