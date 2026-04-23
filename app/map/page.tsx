@@ -51,6 +51,18 @@ function computeRouteProgress(
   return maxIndex
 }
 
+function isNearRoute(lat: number, lng: number, coords: [number, number][]): boolean {
+  const threshold = 20 / 111.32 // 20km in degrees latitude
+  const cosLat = Math.cos(lat * Math.PI / 180)
+  for (let i = 0; i < coords.length; i += 5) {
+    const [rlng, rlat] = coords[i]
+    const dLat = rlat - lat
+    const dLng = (rlng - lng) * cosLat
+    if (dLat * dLat + dLng * dLng < threshold * threshold) return true
+  }
+  return false
+}
+
 function plannedRouteKm(coords: [number, number][]): number {
   let total = 0
   for (let i = 1; i < coords.length; i++) {
@@ -127,13 +139,23 @@ async function getMapData() {
     published_at: v.published_at as string | null,
   }))
 
+  const routeCoords = formattedPlannedRoutes[0]?.coordinates ?? []
+
+  const filteredCities = routeCoords.length > 0
+    ? (routeCities ?? []).filter((c: any) => isNearRoute(c.lat, c.lng, routeCoords))
+    : (routeCities ?? [])
+
+  const filteredPois = routeCoords.length > 0
+    ? (routePois ?? []).filter((p: any) => isNearRoute(p.lat, p.lng, routeCoords))
+    : (routePois ?? [])
+
   return {
     trips: formattedTrips,
     waypoints: waypoints ?? [],
     plannedRoutes: formattedPlannedRoutes,
     videos: formattedVideos,
-    routeCities: (routeCities ?? []) as { id: string; name: string; country: string; lat: number; lng: number; wiki_slug: string }[],
-    routePois: (routePois ?? []) as { id: string; name: string; country: string; lat: number; lng: number; wiki_slug: string; type: 'mountain' | 'pass' | 'lake' }[],
+    routeCities: filteredCities as { id: string; name: string; country: string; lat: number; lng: number; wiki_slug: string }[],
+    routePois: filteredPois as { id: string; name: string; country: string; lat: number; lng: number; wiki_slug: string; type: 'mountain' | 'pass' | 'lake' }[],
   }
 }
 
