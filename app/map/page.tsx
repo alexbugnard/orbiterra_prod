@@ -64,7 +64,7 @@ function plannedRouteKm(coords: [number, number][]): number {
 async function getMapData() {
   const supabase = createSupabaseClient()
 
-  const [{ data: trips }, { data: waypoints }, { data: plannedRoutes }, { data: videos }, { data: routeCities }] = await Promise.all([
+  const [{ data: trips }, { data: waypoints }, { data: plannedRoutes }, { data: videos }, { data: routeCities }, { data: routePois }] = await Promise.all([
     supabase
       .from('trips')
       .select('id, name, start_date, distance_m, coordinates, journal_fr, journal_en, start_lat, start_lng, elevation, country, max_speed_ms, elev_high, breaks, max_speed_lat, max_speed_lng, elev_high_lat, elev_high_lng')
@@ -83,6 +83,10 @@ async function getMapData() {
     supabase
       .from('route_cities')
       .select('id, name, country, lat, lng, wiki_slug')
+      .order('name', { ascending: true }),
+    supabase
+      .from('route_pois')
+      .select('id, name, country, lat, lng, wiki_slug, type')
       .order('name', { ascending: true }),
   ])
 
@@ -129,6 +133,7 @@ async function getMapData() {
     plannedRoutes: formattedPlannedRoutes,
     videos: formattedVideos,
     routeCities: (routeCities ?? []) as { id: string; name: string; country: string; lat: number; lng: number; wiki_slug: string }[],
+    routePois: (routePois ?? []) as { id: string; name: string; country: string; lat: number; lng: number; wiki_slug: string; type: 'mountain' | 'pass' | 'lake' }[],
   }
 }
 
@@ -147,7 +152,7 @@ function computeAmericasProgress(
 }
 
 export default async function MapPage() {
-  const { trips, waypoints, plannedRoutes, videos, routeCities } = await getMapData()
+  const { trips, waypoints, plannedRoutes, videos, routeCities, routePois } = await getMapData()
   const locale = await getLocale()
   const t = await getTranslations('map')
 
@@ -196,7 +201,7 @@ export default async function MapPage() {
   return (
     <div className="relative h-[calc(100vh-57px)]">
       <SyncTrigger />
-      <MapClient trips={trips} waypoints={waypoints} plannedRoutes={plannedRoutes} videos={videos} locale={locale} stats={stats} currentTz={currentTz} vincentLat={vincentLat} vincentLng={vincentLng} vincentLastDate={vincentLastDate} routeCities={routeCities ?? []} />
+      <MapClient trips={trips} waypoints={waypoints} plannedRoutes={plannedRoutes} videos={videos} locale={locale} stats={stats} currentTz={currentTz} vincentLat={vincentLat} vincentLng={vincentLng} vincentLastDate={vincentLastDate} routeCities={routeCities ?? []} routePois={routePois ?? []} />
     </div>
   )
 }

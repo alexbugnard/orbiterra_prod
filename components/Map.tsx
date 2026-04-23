@@ -92,6 +92,7 @@ interface MapProps {
   vincentLng?: number | null
   vincentLastDate?: string | null
   routeCities?: RouteCity[]
+  routePois?: RoutePoi[]
 }
 
 interface RouteCity {
@@ -100,6 +101,22 @@ interface RouteCity {
   country: string
   lat: number
   lng: number
+  wiki_slug: string
+}
+
+interface RoutePoi {
+  id: string
+  name: string
+  country: string
+  lat: number
+  lng: number
+  wiki_slug: string
+  type: 'mountain' | 'pass' | 'lake'
+}
+
+interface WikiTarget {
+  name: string
+  country: string
   wiki_slug: string
 }
 
@@ -278,7 +295,7 @@ function computeRiddenDistM(coords: [number, number][], mask: boolean[]): number
 
 // ──────────────────────────────────────────────────────────────────────────────
 
-export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalHover, stats, currentTz, vincentLat, vincentLng, vincentLastDate, routeCities = [] }: MapProps) {
+export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalHover, stats, currentTz, vincentLat, vincentLng, vincentLastDate, routeCities = [], routePois = [] }: MapProps) {
   const t = useTranslations('map')
   const vincentMarkerLabel = t('vincentMarkerLabel')
   const vincentLastSeenLabel = t('vincentLastSeen')
@@ -315,9 +332,9 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null)
   const [hoveredDistance, setHoveredDistance] = useState<number | null>(null)
   const [hoveredRouteDistance, setHoveredRouteDistance] = useState<number | null>(null)
-  const [selectedCity, setSelectedCity] = useState<RouteCity | null>(null)
-  const [cityWiki, setCityWiki] = useState<WikiSummary | null>(null)
-  const [cityWikiLoading, setCityWikiLoading] = useState(false)
+  const [wikiTarget, setWikiTarget] = useState<WikiTarget | null>(null)
+  const [wikiSummary, setWikiSummary] = useState<WikiSummary | null>(null)
+  const [wikiLoading, setWikiLoading] = useState(false)
   const hoverRouteMarkerRef = useRef<any>(null)
   const selectedRouteIndexRef = useRef<number | null>(null)
   const routeCumDistsRef = useRef<number[] | null>(null)
@@ -456,19 +473,19 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
   }, [showWeather])
 
   useEffect(() => {
-    if (!selectedCity) { setCityWiki(null); return }
-    setCityWikiLoading(true)
-    setCityWiki(null)
+    if (!wikiTarget) { setWikiSummary(null); return }
+    setWikiLoading(true)
+    setWikiSummary(null)
     const lang = locale === 'en' ? 'en' : 'fr'
     const tryFetch = (l: string) =>
-      fetch(`https://${l}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(selectedCity.wiki_slug)}`)
+      fetch(`https://${l}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(wikiTarget.wiki_slug)}`)
         .then(r => r.ok ? r.json() : Promise.reject(r.status))
     tryFetch(lang)
       .catch(() => lang !== 'en' ? tryFetch('en') : Promise.reject())
-      .then((data: WikiSummary) => setCityWiki(data))
+      .then((data: WikiSummary) => setWikiSummary(data))
       .catch(() => {})
-      .finally(() => setCityWikiLoading(false))
-  }, [selectedCity, locale])
+      .finally(() => setWikiLoading(false))
+  }, [wikiTarget, locale])
 
   useEffect(() => {
     const map = mapRef.current
@@ -1028,7 +1045,7 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
       const cityMarkers: any[] = []
       for (const city of routeCities) {
         const m = L.marker([city.lat, city.lng], { icon: makeCityIcon(map.getZoom()), zIndexOffset: 500 })
-        m.on('click', () => setSelectedCity(city))
+        m.on('click', () => setWikiTarget(city))
         m.bindTooltip(
           `<div style="background:rgba(15,23,42,0.92);border:1px solid rgba(51,65,85,0.8);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:600;color:#f1f5f9;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.5);font-family:system-ui,sans-serif">${city.name}</div>`,
           { direction: 'top', offset: [0, -12], opacity: 1, className: 'weather-tooltip' }
@@ -1050,6 +1067,63 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
       }
       map.on('zoomend', updateCityVisibility)
       updateCityVisibility()
+
+      // POI markers: mountains, passes, lakes (visible from zoom 7)
+      const POI_ZOOM = 7
+      const poiStyle: Record<string, { symbol: string; color: string; border: string }> = {
+        mountain: { symbol: '▲', color: '#94a3b8', border: 'rgba(148,163,184,0.6)' },
+        pass:     { symbol: '⛰', color: '#f59e0b', border: 'rgba(245,158,11,0.6)'  },
+        lake:     { symbol: '〜', color: '#38bdf8', border: 'rgba(56,189,248,0.6)'  },
+      }
+      const poiMarkers: any[] = []
+
+      function poiAnchor(zoom: number): [number, number] {
+        const shift = Math.round(Math.max(0, 13 - zoom) * 5 + 14)
+        return [10 - shift, 10 + shift + 8]
+      }
+
+      function makePoiIcon(type: string, zoom: number) {
+        const s = poiStyle[type] ?? poiStyle.mountain
+        const anchor = poiAnchor(zoom)
+        return L.divIcon({
+          html: `<div style="
+            width:20px;height:20px;border-radius:50%;
+            background:rgba(15,23,42,0.88);
+            border:1.5px solid ${s.border};
+            display:flex;align-items:center;justify-content:center;
+            font-size:11px;font-weight:700;color:${s.color};line-height:1;
+            box-shadow:0 2px 6px rgba(0,0,0,0.5);cursor:pointer;
+          ">${s.symbol}</div>`,
+          className: '',
+          iconSize: [20, 20],
+          iconAnchor: anchor,
+        })
+      }
+
+      for (const poi of routePois) {
+        const m = L.marker([poi.lat, poi.lng], { icon: makePoiIcon(poi.type, map.getZoom()), zIndexOffset: 400 })
+        m.on('click', () => setWikiTarget(poi))
+        m.bindTooltip(
+          `<div style="background:rgba(15,23,42,0.92);border:1px solid rgba(51,65,85,0.8);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:600;color:#f1f5f9;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.5);font-family:system-ui,sans-serif">${poi.name}</div>`,
+          { direction: 'top', offset: [0, -12], opacity: 1, className: 'weather-tooltip' }
+        )
+        poiMarkers.push(m)
+      }
+
+      function updatePoiVisibility() {
+        const z = map.getZoom()
+        const icon = (type: string) => makePoiIcon(type, z)
+        poiMarkers.forEach((m, i) => {
+          if (z >= POI_ZOOM) {
+            m.setIcon(icon(routePois[i].type))
+            if (!map.hasLayer(m)) m.addTo(map)
+          } else {
+            if (map.hasLayer(m)) m.remove()
+          }
+        })
+      }
+      map.on('zoomend', updatePoiVisibility)
+      updatePoiVisibility()
 
       // Live position marker
       if (vincentLat !== null && vincentLat !== undefined && vincentLng !== null && vincentLng !== undefined) {
@@ -1361,45 +1435,40 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
         </div>
       )}
 
-      {/* City Wikipedia panel */}
-      {selectedCity && (
+      {/* Wikipedia panel — cities, mountains, passes, lakes */}
+      {wikiTarget && (
         <div
           className="absolute bottom-0 left-0 right-0 md:bottom-4 md:left-auto md:right-4 md:w-[420px] z-[1100] md:rounded-2xl overflow-hidden md:max-h-[80vh] md:overflow-y-auto"
           style={{ background: 'rgba(15,23,42,0.97)', backdropFilter: 'blur(12px)', border: '1px solid rgba(51,65,85,0.8)', boxShadow: '0 24px 64px rgba(0,0,0,0.5)' }}
         >
-          {/* Header */}
           <div className="flex items-start justify-between px-5 pt-5 pb-2">
             <div>
-              <div className="text-lg font-bold text-slate-100">{selectedCity.name}</div>
-              <div className="text-xs text-slate-400 mt-0.5">{selectedCity.country}</div>
+              <div className="text-lg font-bold text-slate-100">{wikiTarget.name}</div>
+              <div className="text-xs text-slate-400 mt-0.5">{wikiTarget.country}</div>
             </div>
             <button
-              onClick={() => setSelectedCity(null)}
+              onClick={() => setWikiTarget(null)}
               className="text-slate-500 hover:text-slate-300 transition-colors ml-3 mt-0.5 flex-shrink-0"
               style={{ fontSize: 22, lineHeight: 1 }}
             >×</button>
           </div>
-
-          {/* Wikipedia content */}
           <div className="px-5 pb-5">
-            {cityWikiLoading && (
-              <div className="text-xs text-slate-500 py-2">Chargement…</div>
-            )}
-            {!cityWikiLoading && cityWiki && (
+            {wikiLoading && <div className="text-xs text-slate-500 py-2">Chargement…</div>}
+            {!wikiLoading && wikiSummary && (
               <>
-                {cityWiki.thumbnail && (
+                {wikiSummary.thumbnail && (
                   <img
-                    src={cityWiki.thumbnail.source}
-                    alt={selectedCity.name}
+                    src={wikiSummary.thumbnail.source}
+                    alt={wikiTarget.name}
                     className="w-full h-48 md:h-56 object-cover rounded-xl mb-3"
                   />
                 )}
                 <p className="text-sm text-slate-300 leading-relaxed line-clamp-[8] md:line-clamp-none">
-                  {cityWiki.extract}
+                  {wikiSummary.extract}
                 </p>
-                {cityWiki.content_urls?.desktop?.page && (
+                {wikiSummary.content_urls?.desktop?.page && (
                   <a
-                    href={cityWiki.content_urls.desktop.page}
+                    href={wikiSummary.content_urls.desktop.page}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 mt-3 text-xs font-semibold text-cyan-400 hover:text-cyan-300 transition-colors"
@@ -1409,7 +1478,7 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
                 )}
               </>
             )}
-            {!cityWikiLoading && !cityWiki && (
+            {!wikiLoading && !wikiSummary && (
               <div className="text-xs text-slate-500 py-2">Aucune information disponible.</div>
             )}
           </div>

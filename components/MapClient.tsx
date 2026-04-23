@@ -91,6 +91,16 @@ interface RouteCity {
   wiki_slug: string
 }
 
+interface RoutePoi {
+  id: string
+  name: string
+  country: string
+  lat: number
+  lng: number
+  wiki_slug: string
+  type: 'mountain' | 'pass' | 'lake'
+}
+
 interface MapClientProps {
   trips: Trip[]
   waypoints: Waypoint[]
@@ -104,8 +114,9 @@ interface MapClientProps {
   vincentLng?: number | null
   vincentLastDate?: string | null
   routeCities?: RouteCity[]
+  routePois?: RoutePoi[]
 }
 
-export function MapClient({ trips, waypoints, plannedRoutes, videos, locale, externalHover, stats, currentTz, vincentLat, vincentLng, vincentLastDate, routeCities }: MapClientProps) {
-  return <Map trips={trips} waypoints={waypoints} plannedRoutes={plannedRoutes} videos={videos} locale={locale} externalHover={externalHover} stats={stats} currentTz={currentTz} vincentLat={vincentLat} vincentLng={vincentLng} vincentLastDate={vincentLastDate} routeCities={routeCities ?? []} />
+export function MapClient({ trips, waypoints, plannedRoutes, videos, locale, externalHover, stats, currentTz, vincentLat, vincentLng, vincentLastDate, routeCities, routePois }: MapClientProps) {
+  return <Map trips={trips} waypoints={waypoints} plannedRoutes={plannedRoutes} videos={videos} locale={locale} externalHover={externalHover} stats={stats} currentTz={currentTz} vincentLat={vincentLat} vincentLng={vincentLng} vincentLastDate={vincentLastDate} routeCities={routeCities ?? []} routePois={routePois ?? []} />
 }
