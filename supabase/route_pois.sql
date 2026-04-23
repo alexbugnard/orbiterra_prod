@@ -62,7 +62,7 @@ INSERT INTO route_pois (name, country, lat, lng, wiki_slug, type) VALUES
 ('Paso Hua Hum',               'Chile',        -40.1500,  -71.6833, 'Paso_Hua_Hum',                     'pass'),
 ('Paso Vergara',               'Chile',        -37.5833,  -71.0000, 'Paso_Vergara',                     'pass'),
 -- ── LAKES ────────────────────────────────────────────────────────────────────
-('Lago Titicaca',              'Peru/Bolivia', -15.8402,  -69.3342, 'Lake_Titicaca',                    'lake'),
+('Lago Titicaca',              'Peru/Bolivia', -15.8402,  -69.3342, 'Lac_Titicaca',                     'lake'),
 ('Lago Atitlán',               'Guatemala',    14.6909,  -91.2016,  'Lake_Atitlán',                     'lake'),
 ('Lago de Nicaragua',          'Nicaragua',    11.5294,  -85.3750,  'Lake_Nicaragua',                   'lake'),
 ('Lago de Managua',            'Nicaragua',    12.2000,  -86.4167,  'Lake_Managua',                     'lake'),
