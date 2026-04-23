@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# orbiterra — Vincent's Pan-American Cycling Tracker
 
-## Getting Started
+A live map tracking Vincent Morisetti's cycling journey from Deadhorse, Alaska to Ushuaia, Argentina (~30,000 km across two continents).
 
-First, run the development server:
+## What the app does
+
+- Displays every completed ride as an interactive trace on a Leaflet map
+- Shows the full planned route (Deadhorse → Ushuaia) as a reference line
+- Places geotagged photos from the road on the map
+- Shows a live weather layer along the planned route
+- Marks cities, mountains, passes and lakes near the route with Wikipedia summaries
+- Estimates Vincent's current position from the furthest point he has ridden on the planned route
+- Tracks overall stats: distance ridden, elevation gain, countries crossed, Americas crossing progress
+
+## Tech stack
+
+- **Framework:** Next.js 15 (App Router)
+- **Database:** Supabase (PostgreSQL)
+- **Mapping:** Leaflet.js (client-side only, SSR disabled)
+- **Auth:** NextAuth.js (credentials provider)
+- **i18n:** next-intl — French default, English toggle
+- **Hosting:** Vercel with Vercel Cron jobs
+
+## Data sources
+
+| Data | Source | Refresh |
+|------|--------|---------|
+| Rides | Strava API (OAuth) | Every ~4 hours |
+| Photos | Flickr API (geotagged) | Every ~4 hours |
+| Videos | YouTube RSS feed | Every hour |
+| Weather | OpenWeatherMap API | On map load |
+| City/POI descriptions | Wikipedia REST API | On demand |
+
+## Version
+
+The app version is defined in `lib/version.ts`. Increment it on every commit that touches user-visible features or fixes.
+
+## Local development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Requires a `.env.local` with Supabase, Strava, Flickr, NextAuth, and OpenWeatherMap credentials.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Database migrations
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+SQL files in `supabase/` can be run in the Supabase SQL editor. Files ending in `_batch*.sql` are data seeding scripts safe to re-run (they use `ON CONFLICT DO NOTHING`).

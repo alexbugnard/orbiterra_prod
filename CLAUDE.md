@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **BikeTrip Tracker** — a serverless web app that automatically syncs a cyclist's (Vincent's) Strava activities and Flickr photos onto an interactive map, tracking his Alaska → Ushuaia cycling journey. The app is live and actively developed.
 
+## Version
+
+The app version is defined in `lib/version.ts` (`APP_VERSION`). Increment it on every commit that touches user-visible features or fixes. It is displayed in the About modal footer.
+
 ## Tech Stack
 
 - **Framework:** Next.js 15 (App Router — server components + client components, API routes)
@@ -17,13 +21,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Database Schema
 
-Five tables in Supabase:
+Seven tables in Supabase:
 
 - **`trips`** — `id, name, strava_id, start_date, end_date, distance_m, coordinates jsonb ([lng,lat][]), elevation jsonb ([distanceMeters,altMeters][]), start_lat, start_lng, visible, journal_fr, journal_en, last_synced_at`
 - **`waypoints`** — `id, trip_id, lat, lng, url_large, title, flickr_id, taken_at`
 - **`planned_routes`** — `id, name, coordinates jsonb ([lng,lat][]), color`
 - **`videos`** — `id, youtube_id (unique), title, published_at, sort_order`
 - **`strava_tokens`** — `id, access_token, refresh_token, expires_at`
+- **`route_cities`** — `id, name, country, lat, lng, wiki_slug` — cities along the Pan-American route; unique on `(name, country)`
+- **`route_pois`** — `id, name, country, lat, lng, wiki_slug, type` — mountains/passes/lakes; `type IN ('mountain','pass','lake')`; unique on `(name, country)`
 
 ## Architecture
 
@@ -42,8 +48,9 @@ Five tables in Supabase:
 - **`ElevationProfile.tsx`** — custom SVG chart with ResizeObserver (no chart library); shows gain, min/max alt, hover indicator
 - **`TripViewClient.tsx`** — client wrapper for `/trips/[id]`; owns shared `hoveredDistance` state passed as `externalHover` to both `ElevationProfile` and `MapClient`
 - **`MapClient.tsx`** — thin client wrapper that dynamically imports `Map` (SSR disabled); accepts optional `externalHover` prop
-- **`AboutModal.tsx`** — rendered via `createPortal` to `document.body` (escapes header `backdrop-filter` stacking context); shows goal, Vincent bio, sponsors (RAB logo), YouTube videos
+- **`AboutModal.tsx`** — rendered via `createPortal` to `document.body` (escapes header `backdrop-filter` stacking context); three tabs: About (goal, bio, stats, videos, sponsors), Guide (feature explainer, data sources, suggestion email), Setup (bike config). Displays `APP_VERSION` from `lib/version.ts` in footer.
 - **`AboutButton.tsx`** — receives translated label as prop (avoids `useTranslations` hydration issue in client component)
+- **`lib/version.ts`** — single source of truth for `APP_VERSION`; increment on every user-visible change
 
 ## Key Implementation Notes
 

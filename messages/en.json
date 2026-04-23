@@ -55,6 +55,26 @@
     "sponsorsText": "This journey is made possible thanks to the support of our partners. Want to support the adventure? Get in touch.",
     "videosTitle": "Videos",
     "videosEmpty": "No videos yet.",
-    "videoPlay": "Play"
+    "videoPlay": "Play",
+    "guideTab": "Guide",
+    "guideTitle": "How does this map work?",
+    "guideIntro": "This map tracks Vincent's journey from Deadhorse, Alaska to Ushuaia, Argentina in near real time. Here is what you can see and where the data comes from.",
+    "guideSectionMapTitle": "What the map shows",
+    "guideSectionMapRides": "Completed rides appear as orange traces. Click a trace to see the distance, elevation gain, date and ride journal if Vincent wrote one.",
+    "guideSectionMapRoute": "The planned route is shown as a dashed cyan line. It represents the intended itinerary from Deadhorse to Ushuaia.",
+    "guideSectionMapPhotos": "Geotagged photos taken along the road appear as markers on the map. Click one to view the image.",
+    "guideSectionMapWeather": "The weather layer shows current conditions along the planned route: temperature, wind, humidity and a short description. Data is refreshed regularly.",
+    "guideSectionMapCities": "Towns, mountains, passes and lakes near the route are marked. Click any of them to read a Wikipedia summary.",
+    "guideSectionMapPosition": "The pulsing cyan dot shows Vincent's estimated current position: the furthest point reached on the planned route across all his recorded rides.",
+    "guideSectionDataTitle": "Where does the data come from?",
+    "guideSectionDataStrava": "Rides are imported automatically from Strava, Vincent's activity tracking app. Synchronisation runs approximately every four hours.",
+    "guideSectionDataFlickr": "Photos come from his Flickr account. Only photos with GPS coordinates appear on the map.",
+    "guideSectionDataYoutube": "Videos are imported from his YouTube channel and refreshed every hour.",
+    "guideSectionDataWeather": "Weather data comes from the OpenWeatherMap API.",
+    "guideSectionDataWiki": "City and point-of-interest descriptions are fetched on demand from Wikipedia, in your language when available.",
+    "guideSectionFreshnessTitle": "How up to date is the data?",
+    "guideSectionFreshnessText": "Rides and photos update every four hours. Weather refreshes regularly. There may therefore be a short delay between what is happening on the ground and what is displayed here.",
+    "guideSectionSuggestTitle": "Suggest a feature",
+    "guideSectionSuggestText": "Have an idea to improve the map or the site? Send us a message."
   }
 }

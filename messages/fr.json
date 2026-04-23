@@ -55,6 +55,26 @@
     "sponsorsText": "Ce voyage est rendu possible grâce au soutien de nos partenaires. Vous souhaitez soutenir l'aventure ? Contactez-nous.",
     "videosTitle": "Vidéos",
     "videosEmpty": "Aucune vidéo pour l'instant.",
-    "videoPlay": "Lire"
+    "videoPlay": "Lire",
+    "guideTab": "Guide",
+    "guideTitle": "Comment fonctionne cette carte ?",
+    "guideIntro": "Cette carte retrace en temps quasi-réel le voyage de Vincent depuis Deadhorse en Alaska jusqu'à Ushuaia en Argentine. Voici ce que vous pouvez y voir et d'où viennent les données.",
+    "guideSectionMapTitle": "Ce que montre la carte",
+    "guideSectionMapRides": "Les étapes réalisées apparaissent sous forme de tracés orange. Cliquez sur un tracé pour voir la distance, le dénivelé, la date et le journal de l'étape si Vincent en a rédigé un.",
+    "guideSectionMapRoute": "Le parcours prévu est affiché en pointillés cyan. Il représente l'itinéraire planifié de Deadhorse à Ushuaia.",
+    "guideSectionMapPhotos": "Les photos géolocalisées prises en route sont indiquées par des marqueurs sur la carte. Cliquez dessus pour les voir.",
+    "guideSectionMapWeather": "La couche météo affiche les conditions actuelles le long du trajet prévu : température, vent, humidité et description. Les données sont mises à jour régulièrement.",
+    "guideSectionMapCities": "Les villes, montagnes, cols et lacs proches du trajet sont indiqués. Cliquez sur l'un d'eux pour lire un résumé Wikipedia.",
+    "guideSectionMapPosition": "Le point cyan clignotant indique la position estimée de Vincent : c'est le point le plus avancé sur le parcours prévu parmi toutes ses étapes enregistrées.",
+    "guideSectionDataTitle": "D'où viennent les données ?",
+    "guideSectionDataStrava": "Les étapes sont importées automatiquement depuis Strava, l'application de suivi sportif de Vincent. La synchronisation se fait toutes les quatre heures environ.",
+    "guideSectionDataFlickr": "Les photos viennent de son compte Flickr. Seules les photos avec coordonnées GPS apparaissent sur la carte.",
+    "guideSectionDataYoutube": "Les vidéos sont importées depuis sa chaîne YouTube et mises à jour toutes les heures.",
+    "guideSectionDataWeather": "La météo provient de l'API OpenWeatherMap.",
+    "guideSectionDataWiki": "Les descriptions des villes et points d'intérêt sont chargées à la demande depuis Wikipedia, dans votre langue si disponible.",
+    "guideSectionFreshnessTitle": "Actualité des données",
+    "guideSectionFreshnessText": "Les étapes et photos se mettent à jour toutes les quatre heures. La météo est actualisée régulièrement. Il peut donc y avoir un léger décalage entre la réalité terrain et ce qui est affiché.",
+    "guideSectionSuggestTitle": "Suggérer une fonctionnalité",
+    "guideSectionSuggestText": "Vous avez une idée pour améliorer la carte ou le site ? Envoyez-nous un message."
   }
 }

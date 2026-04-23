@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslations } from 'next-intl'
 import { BikeSetup } from './BikeSetup'
+import { APP_VERSION } from '@/lib/version'
 
 interface Video {
   id: string
@@ -19,7 +20,7 @@ export function AboutModal({ onClose }: AboutModalProps) {
   const t = useTranslations('about')
   const [videos, setVideos] = useState<Video[]>([])
   const [activeVideo, setActiveVideo] = useState<string | null>(null)
-  const [tab, setTab] = useState<'about' | 'setup'>('about')
+  const [tab, setTab] = useState<'about' | 'guide' | 'setup'>('about')
 
   // Load videos
   useEffect(() => {
@@ -61,7 +62,7 @@ export function AboutModal({ onClose }: AboutModalProps) {
         {/* Header */}
         <div className="flex items-center justify-between px-8 py-5 border-b border-slate-700/50 flex-shrink-0">
           <div className="flex items-center gap-1 bg-slate-800/60 rounded-xl p-1">
-            {(['about', 'setup'] as const).map((t2) => (
+            {(['about', 'guide', 'setup'] as const).map((t2) => (
               <button
                 key={t2}
                 onClick={() => setTab(t2)}
@@ -72,7 +73,7 @@ export function AboutModal({ onClose }: AboutModalProps) {
                   border: tab === t2 ? '1px solid rgba(249,115,22,0.3)' : '1px solid transparent',
                 }}
               >
-                {t2 === 'about' ? t('title') : '🚲 Setup'}
+                {t2 === 'about' ? t('title') : t2 === 'guide' ? t('guideTab') : 'Setup'}
               </button>
             ))}
           </div>
@@ -85,6 +86,81 @@ export function AboutModal({ onClose }: AboutModalProps) {
             </svg>
           </button>
         </div>
+
+        {/* Guide tab */}
+        {tab === 'guide' && (
+          <div className="flex-1 overflow-y-auto px-8 py-8 space-y-8">
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-3">{t('guideTitle')}</h3>
+              <p className="text-slate-300 leading-relaxed">{t('guideIntro')}</p>
+            </div>
+
+            <div className="border-t border-slate-700/50" />
+
+            <div>
+              <h4 className="text-base font-semibold text-orange-400 mb-4">{t('guideSectionMapTitle')}</h4>
+              <div className="space-y-4">
+                {([
+                  'guideSectionMapRides',
+                  'guideSectionMapRoute',
+                  'guideSectionMapPhotos',
+                  'guideSectionMapWeather',
+                  'guideSectionMapCities',
+                  'guideSectionMapPosition',
+                ] as const).map((key) => (
+                  <div key={key} className="flex gap-3">
+                    <div className="mt-1 w-1.5 h-1.5 rounded-full bg-orange-500/60 flex-shrink-0" />
+                    <p className="text-slate-300 leading-relaxed text-sm">{t(key)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t border-slate-700/50" />
+
+            <div>
+              <h4 className="text-base font-semibold text-orange-400 mb-4">{t('guideSectionDataTitle')}</h4>
+              <div className="space-y-4">
+                {([
+                  ['Strava', 'guideSectionDataStrava'],
+                  ['Flickr', 'guideSectionDataFlickr'],
+                  ['YouTube', 'guideSectionDataYoutube'],
+                  ['OpenWeatherMap', 'guideSectionDataWeather'],
+                  ['Wikipedia', 'guideSectionDataWiki'],
+                ] as const).map(([label, key]) => (
+                  <div key={key} className="flex gap-3">
+                    <span className="mt-0.5 text-xs font-semibold text-slate-500 w-28 flex-shrink-0">{label}</span>
+                    <p className="text-slate-300 leading-relaxed text-sm">{t(key)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t border-slate-700/50" />
+
+            <div>
+              <h4 className="text-base font-semibold text-orange-400 mb-2">{t('guideSectionFreshnessTitle')}</h4>
+              <p className="text-slate-300 leading-relaxed text-sm">{t('guideSectionFreshnessText')}</p>
+            </div>
+
+            <div className="border-t border-slate-700/50" />
+
+            <div>
+              <h4 className="text-base font-semibold text-orange-400 mb-2">{t('guideSectionSuggestTitle')}</h4>
+              <p className="text-slate-300 leading-relaxed text-sm mb-3">{t('guideSectionSuggestText')}</p>
+              <a
+                href="mailto:alex.bubu19@gmail.com?subject=Suggestion%20orbiterra.ch"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-slate-700 text-slate-300 hover:border-orange-500 hover:text-orange-400 transition-colors"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                  <polyline points="22,6 12,13 2,6"/>
+                </svg>
+                alex.bubu19@gmail.com
+              </a>
+            </div>
+          </div>
+        )}
 
         {/* Setup tab */}
         {tab === 'setup' && (
@@ -252,12 +328,15 @@ export function AboutModal({ onClose }: AboutModalProps) {
               Contact
             </a>
           </div>
-          <button
-            onClick={onClose}
-            className="px-5 py-2 rounded-xl text-sm font-medium bg-slate-700 hover:bg-slate-600 text-white transition-colors"
-          >
-            {t('close')}
-          </button>
+          <div className="flex items-center gap-4">
+            <span className="text-xs text-slate-600">v{APP_VERSION}</span>
+            <button
+              onClick={onClose}
+              className="px-5 py-2 rounded-xl text-sm font-medium bg-slate-700 hover:bg-slate-600 text-white transition-colors"
+            >
+              {t('close')}
+            </button>
+          </div>
         </div>
       </div>
     </div>,
