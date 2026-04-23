@@ -106,6 +106,7 @@ export function AboutModal({ onClose }: AboutModalProps) {
                   'guideSectionMapPhotos',
                   'guideSectionMapWeather',
                   'guideSectionMapCities',
+                  'guideSectionMapBasemap',
                   'guideSectionMapPosition',
                 ] as const).map((key) => (
                   <div key={key} className="flex gap-3">
@@ -122,10 +123,10 @@ export function AboutModal({ onClose }: AboutModalProps) {
               <h4 className="text-base font-semibold text-orange-400 mb-4">{t('guideSectionDataTitle')}</h4>
               <div className="space-y-4">
                 {([
-                  ['Strava', 'guideSectionDataStrava'],
+                  ['Strava / Flickr', 'guideSectionDataStrava'],
                   ['Flickr', 'guideSectionDataFlickr'],
                   ['YouTube', 'guideSectionDataYoutube'],
-                  ['OpenWeatherMap', 'guideSectionDataWeather'],
+                  ['Open-Meteo', 'guideSectionDataWeather'],
                   ['Wikipedia', 'guideSectionDataWiki'],
                 ] as const).map(([label, key]) => (
                   <div key={key} className="flex gap-3">
