@@ -1002,36 +1002,50 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
       map.on('zoomend', updateEggVisibility)
       updateEggVisibility()
 
-      // City markers (visible from zoom 4)
-      const CITY_ZOOM = 4
-      const cityIcon = L.divIcon({
-        html: `<div style="
+      // City markers (visible from zoom 9)
+      const CITY_ZOOM = 9
+      const cityIconHtml = `<div style="
           width:20px;height:20px;border-radius:50%;
           background:rgba(15,23,42,0.88);
           border:1.5px solid rgba(148,163,184,0.6);
           display:flex;align-items:center;justify-content:center;
-          font-size:11px;line-height:1;
+          font-size:12px;font-weight:700;color:#94a3b8;line-height:1;
           box-shadow:0 2px 6px rgba(0,0,0,0.5);
           cursor:pointer;
-        ">🏙️</div>`,
-        className: '',
-        iconSize: [20, 20],
-        iconAnchor: [10, 10],
-      })
+        ">?</div>`
+
+      // Offset grows as zoom decreases: at zoom 9 → 26px up/right, at zoom 13+ → 14px
+      function cityAnchor(zoom: number): [number, number] {
+        const shift = Math.round(Math.max(0, 13 - zoom) * 5 + 14)
+        return [10 - shift, 10 + shift + 8]
+      }
+
+      function makeCityIcon(zoom: number) {
+        const anchor = cityAnchor(zoom)
+        return L.divIcon({ html: cityIconHtml, className: '', iconSize: [20, 20], iconAnchor: anchor })
+      }
+
       const cityMarkers: any[] = []
       for (const city of routeCities) {
-        const m = L.marker([city.lat, city.lng], { icon: cityIcon, zIndexOffset: 500 })
+        const m = L.marker([city.lat, city.lng], { icon: makeCityIcon(map.getZoom()), zIndexOffset: 500 })
         m.on('click', () => setSelectedCity(city))
-        m.bindTooltip(`<span style="font-size:11px;font-weight:600">${city.name}</span>`, {
-          direction: 'top', offset: [0, -12], opacity: 1, className: 'weather-tooltip',
-        })
+        m.bindTooltip(
+          `<div style="background:rgba(15,23,42,0.92);border:1px solid rgba(51,65,85,0.8);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:600;color:#f1f5f9;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.5);font-family:system-ui,sans-serif">${city.name}</div>`,
+          { direction: 'top', offset: [0, -12], opacity: 1, className: 'weather-tooltip' }
+        )
         cityMarkers.push(m)
       }
+
       function updateCityVisibility() {
         const z = map.getZoom()
+        const icon = makeCityIcon(z)
         cityMarkers.forEach(m => {
-          if (z >= CITY_ZOOM) { if (!map.hasLayer(m)) m.addTo(map) }
-          else { if (map.hasLayer(m)) m.remove() }
+          if (z >= CITY_ZOOM) {
+            m.setIcon(icon)
+            if (!map.hasLayer(m)) m.addTo(map)
+          } else {
+            if (map.hasLayer(m)) m.remove()
+          }
         })
       }
       map.on('zoomend', updateCityVisibility)
@@ -1350,24 +1364,24 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
       {/* City Wikipedia panel */}
       {selectedCity && (
         <div
-          className="absolute bottom-4 right-4 z-[1100] w-80 max-w-[calc(100vw-2rem)] rounded-2xl overflow-hidden"
+          className="absolute bottom-0 left-0 right-0 md:bottom-4 md:left-auto md:right-4 md:w-[420px] z-[1100] md:rounded-2xl overflow-hidden md:max-h-[80vh] md:overflow-y-auto"
           style={{ background: 'rgba(15,23,42,0.97)', backdropFilter: 'blur(12px)', border: '1px solid rgba(51,65,85,0.8)', boxShadow: '0 24px 64px rgba(0,0,0,0.5)' }}
         >
           {/* Header */}
-          <div className="flex items-start justify-between px-4 pt-4 pb-2">
+          <div className="flex items-start justify-between px-5 pt-5 pb-2">
             <div>
-              <div className="text-base font-bold text-slate-100">{selectedCity.name}</div>
+              <div className="text-lg font-bold text-slate-100">{selectedCity.name}</div>
               <div className="text-xs text-slate-400 mt-0.5">{selectedCity.country}</div>
             </div>
             <button
               onClick={() => setSelectedCity(null)}
               className="text-slate-500 hover:text-slate-300 transition-colors ml-3 mt-0.5 flex-shrink-0"
-              style={{ fontSize: 18, lineHeight: 1 }}
+              style={{ fontSize: 22, lineHeight: 1 }}
             >×</button>
           </div>
 
           {/* Wikipedia content */}
-          <div className="px-4 pb-4">
+          <div className="px-5 pb-5">
             {cityWikiLoading && (
               <div className="text-xs text-slate-500 py-2">Chargement…</div>
             )}
@@ -1377,10 +1391,10 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
                   <img
                     src={cityWiki.thumbnail.source}
                     alt={selectedCity.name}
-                    className="w-full h-32 object-cover rounded-xl mb-3"
+                    className="w-full h-48 md:h-56 object-cover rounded-xl mb-3"
                   />
                 )}
-                <p className="text-xs text-slate-300 leading-relaxed line-clamp-5">
+                <p className="text-sm text-slate-300 leading-relaxed line-clamp-[8] md:line-clamp-none">
                   {cityWiki.extract}
                 </p>
                 {cityWiki.content_urls?.desktop?.page && (
