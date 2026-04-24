@@ -821,6 +821,7 @@ export function Map({ trips, waypoints, plannedRoutes, videos, locale, externalH
         minZoom: 3,
         maxBounds: [[-85, -Infinity], [85, Infinity]],
         maxBoundsViscosity: 1.0,
+        preferCanvas: true,
       }).setView([46.2276, 2.2137], 6)
 
       tileLayerRef.current = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
